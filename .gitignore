@@ -1,6 +1,9 @@
 hb.py
+a_test_page.py
 api_key.txt
 Sora.txt
+prompts.txt
+Architecture Consistancy.png
 # the md files used for results
 *.md
 # utility scripts folder 
