@@ -1,0 +1,11 @@
+hb.py
+api_key.txt
+Sora.txt
+# the md files used for results
+*.md
+# utility scripts folder 
+utility_scripts/
+# ignore vscode settings 
+.vscode/
+# ignore pycache
+__pycache__/
