@@ -50,11 +50,25 @@ CREATE TABLE if not exists my_progress (
     What_did_i_lack text
 )
 """
+# * topic id in the above table will only be for project/practials topics
 Query_create_struggles = """
 CREATE TABLE if not exists struggles (
     The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP primary key,
     The_struggle TEXT,
     The_suggestion TEXT
+)
+"""
+Query_create_workflow_qs = """
+Create table if not exists workflow_questions (
+    The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Question_no INT check(Question_no>=6 and Question_no<=19),
+    Question TEXT,
+    User_Answer TEXT,
+    topic_id int,
+    Foreign key(topic_id) REFERENCES Topics(topic_id),
+    test_id int,
+    Foreign key(test_id) REFERENCES Tests(test_id)
+    constraint specific_question Primary key (Question_no, topic_id, test_id)   
 )
 """
 Query_create_ideas_table = """
@@ -111,6 +125,7 @@ print("Questions table created")
 cur.execute(Query_create_my_progress)
 cur.execute(Query_create_struggles)
 cur.execute(Query_create_ideas_table)
+cur.execute(Query_create_workflow_qs)
 the_db_conn.commit()
 the_db_conn.close()
 
