@@ -144,8 +144,7 @@ def connnecting():
         host = my_host,
         user = my_user,
         passwd = my_passwd,
-        database = dbname,
-        connection_timeout=3600
+        database = dbname
     )
 
     cur = db.cursor()
