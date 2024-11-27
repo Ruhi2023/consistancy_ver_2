@@ -1,13 +1,23 @@
 from mysql import connector
 import streamlit as st
 import os
+import json
 # i am checking if database exists
-dbname = 'consistancy'
 
+def getconnnames():
+    path = os.path.join(os.getcwd(), "Assets", "db_details.json")
+    with open(path, 'r',encoding='utf-8') as f:
+        data = json.load(f)
+    db = "consistancy"
+    host = data['host']
+    user = data['user']
+    passwd = data['password']
+    return (host, user, passwd,db)
+my_host, my_user, my_passwd, dbname = getconnnames()
 a_conn = connector.connect(
-    host = 'localhost',
-    user = 'Ruhi',
-    passwd = 'Ruhi@5084'
+    host = my_host,
+    user = my_user,
+    passwd = my_passwd
 )
 
 cur = a_conn.cursor()
@@ -23,9 +33,9 @@ else:
 a_conn.close()
 
 the_db_conn = connector.connect(
-    host = 'localhost',
-    user = 'Ruhi',
-    passwd = 'Ruhi@5084',
+    host = my_host,
+    user = my_user,
+    passwd = my_passwd,
     database = dbname
 )
 
@@ -67,7 +77,7 @@ Create table if not exists workflow_questions (
     topic_id int,
     Foreign key(topic_id) REFERENCES Topics(topic_id),
     test_id int,
-    Foreign key(test_id) REFERENCES Tests(test_id)
+    Foreign key(test_id) REFERENCES Tests(test_id),
     constraint specific_question Primary key (Question_no, topic_id, test_id)   
 )
 """
@@ -131,9 +141,9 @@ the_db_conn.close()
 
 def connnecting():
     db = connector.connect(
-        host = 'localhost',
-        user = 'Ruhi',
-        passwd = 'Ruhi@5084',
+        host = my_host,
+        user = my_user,
+        passwd = my_passwd,
         database = dbname,
         connection_timeout=3600
     )
