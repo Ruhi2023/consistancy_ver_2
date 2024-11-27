@@ -226,6 +226,7 @@ if 'form_counter' not in st.session_state:
 # (UI func) 4. display Questions in the form of a form
 @st.fragment
 def display_questions_in_form(d_of_qs: dict):
+    st.session_state.form_counter += 1
     form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}_{st.session_state.form_counter}"
     with st.form(form_title):
         st.markdown("### Level: "+ d_of_qs['Question_type'])
