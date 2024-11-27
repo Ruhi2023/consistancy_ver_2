@@ -218,10 +218,15 @@ def evaluate_and_store_answers(d_of_qs_with_ans: dict, model_instance):
 
 evaluate_and_store_answers_partial = partial(evaluate_and_store_answers, model_instance=model)
 generate_questions_and_put_in_db_partial = partial(generate_questions_and_put_in_db, model=model)
+
+# seg-expl adding form counter to handel reruns
+if 'form_counter' not in st.session_state:
+    st.session_state.form_counter = 0
+
 # (UI func) 4. display Questions in the form of a form
 @st.fragment
 def display_questions_in_form(d_of_qs: dict):
-    form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}"
+    form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}_{st.session_state.form_counter}"
     with st.form(form_title):
         st.markdown("### Level: "+ d_of_qs['Question_type'])
         st.write(d_of_qs['Question'])
