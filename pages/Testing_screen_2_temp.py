@@ -88,7 +88,11 @@ with st.form("test creting form"):
     if submit_button:
 #     (st_session state) 3. return dict of test_id, topic_id, easy_qs, medium_qs, difficult_qs
         st.session_state.test_details = store_test_in_db(eno=easy_num, mno=mid_num, hno=hard_num, topic_id=topic[0], tp_name=topic[1])
-        st.session_state.generate_questions = True
+        if not st.session_state.test_details == 0:
+            st.session_state.generate_questions = True
+        else:
+            st.error("test could not be stored in DB")
+            st.stop()
 # 2. get Questions
 # (separate function to call) 2. generate Questions and put in databse
 def Questions_already_in_db_fetch_for_prompt(test_id, topic_id,level):
