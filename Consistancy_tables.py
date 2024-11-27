@@ -57,7 +57,8 @@ CREATE TABLE if not exists my_progress (
     Foreign key(test_id) REFERENCES Tests(Test_id),
     Method_Summary_User text,
     Method_Summary_Sugg text,
-    What_did_i_lack text
+    What_did_i_lack text,
+    workflow_qs int check(workflow_qs >= 6 and workflow_qs <= 21)
 )
 """
 # * topic id in the above table will only be for project/practials topics
