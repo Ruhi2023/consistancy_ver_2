@@ -8,7 +8,7 @@ import datetime as dt
 import os
 import math
 # initialization
-st.session_state
+#// st.session_state
 api_key_from_func = su.get_mykey()
 genai.configure(api_key=api_key_from_func)
 # configure genai for model
@@ -19,7 +19,7 @@ model_conf = {
     "max_output_tokens": 8192,
     "response_mime_type": "text/plain"}
 model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=model_conf)
-
+my_host, my_user, my_passwd, dbname = su.getconnnames()
 
 #  tasks
 # 1. generate form for test 
@@ -48,10 +48,10 @@ def store_test_in_db(eno, mno, hno, topic_id, tp_name):
         return 0
     else:
         the_db = conn.connect(
-            host = "localhost",
-            user = "Ruhi",
-            passwd = "Ruhi@5084",
-            database = "consistancy"
+            host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
         )
         the_cur = the_db.cursor()
         the_cur.execute("Insert into Tests (easy_Questions,medium_Questions,difficult_Questions,topic_id) values (%s,%s,%s,%s)",(int(eno),int(mno),int(hno),topic_id))
@@ -64,10 +64,10 @@ def store_test_in_db(eno, mno, hno, topic_id, tp_name):
 #     (UI ) 1. create form for fornt end 
 with st.form("test creting form"):
     db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+        user = my_user,
+        passwd = my_passwd,
+        database = dbname
     )
     cur = db.cursor()
     cur.execute("Select topic_id, topic_name from Topics where topic_type = 'skills'")
@@ -137,10 +137,10 @@ def generate_questions_and_put_in_db(Test_id, topic_id, level, model, question_n
     # // response = model.generate(prompt=myprompt, max_tokens=200, temperature=0.9, top_p=1, top_k=64, stop="NEXT_QUESTION")
     res = model.generate_content(myprompt)
     my_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
     )
     my_cur = my_db.cursor()
     my_cur.execute("INSERT INTO Questions (Test_id, Topic_id, Question_no, Question_type, Question) VALUES (%s, %s, %s, %s, %s)", (Test_id, topic_id, question_no,level, res.text))
@@ -156,10 +156,10 @@ def fetch_format_questions_from_db(ts_id, tp_id):
     # Done: think how to handel evaluation
     my_lis = []
     my_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
     )
     my_cur = my_db.cursor()
     my_cur.execute("Select question_no, question, question_type from Questions where Test_id = %s and topic_id = %s", (ts_id,tp_id))
@@ -196,10 +196,10 @@ def evaluate_and_store_answers(d_of_qs_with_ans: dict, model_instance):
     # * store answer in database
     if score > 0:
         my_db_of_qs = conn.connect(
-            host = "localhost",
-            user = "Ruhi",
-            passwd = "Ruhi@5084",
-            database = "consistancy")
+            host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname)
         my_cur_of_qs = my_db_of_qs.cursor()
         if score == 1:
             answer_correct_bool = True
@@ -304,14 +304,14 @@ Please format the response in markdown, with each (i repeat each) question start
     # Queries 
     Query_wrong_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = false"""
     Query_correct_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = true"""
-    Query_not_attempted_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = null"""
+    Query_not_attempted_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness is null"""
     # connecting to database
     
     my_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
     )
     my_cur = my_db.cursor()
     my_cur.execute(Query_wrong_Questions, (test_id, topic_id))
@@ -479,10 +479,10 @@ def display_evaluations(markdown_string,md_name, ts_det):
     # )
     # done above was the actual error()
     res_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy")
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname)
     cur = res_db.cursor()
     cur.execute("update tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s", (math.ceil(ts_det["score"]),markdown_string, test_id, topic_id))
     res_db.commit()
