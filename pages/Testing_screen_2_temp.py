@@ -38,6 +38,16 @@ my_host, my_user, my_passwd, dbname = su.getconnnames()
         # 2. store in a markdown file
         # 3. store in database and display as a dialog + get st.sessionstate.display_questions deleted
 
+if 'rerun_counter' not in st.session_state:
+    st.session_state.rerun_counter = 0
+
+st.session_state.rerun_counter += 1
+
+# seg-expl removing the formsubmitter with last id = anything but reruncounter
+# ! dangerous
+for key in st.session_state:
+    if key.startswith("FormSubmitter") and not key.endswith(str(st.session_state.rerun_counter)) and key != "FormSubmitter:test creting form-Test what i learnt" :
+        del st.session_state[key]
 
 # 1. generate form for test 
 #     (DB ) 2. store in database for backend
@@ -220,18 +230,16 @@ evaluate_and_store_answers_partial = partial(evaluate_and_store_answers, model_i
 generate_questions_and_put_in_db_partial = partial(generate_questions_and_put_in_db, model=model)
 
 # seg-expl adding form counter to handel reruns
-if 'form_counter' not in st.session_state:
-    st.session_state.form_counter = 0
+
 
 # (UI func) 4. display Questions in the form of a form
 @st.fragment
-def display_questions_in_form(d_of_qs: dict):
-    st.session_state.form_counter += 1
-    form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}_{st.session_state.form_counter}"
+def display_questions_in_form(d_of_qs: dict, rrc: int):
+    form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}_{rrc}"
     with st.form(form_title):
         st.markdown("### Level: "+ d_of_qs['Question_type'])
         st.write(d_of_qs['Question'])
-        user_answer =st.text_area("Answer", key=f"ans_{d_of_qs['Question_no']}")
+        user_answer =st.text_area("Answer", key = f"ans_{form_title}")
         sbut = st.form_submit_button(f"Submit {form_title}")
         if sbut:
             # ill just return answer and Question no by a function_call
@@ -266,7 +274,8 @@ if "test_details" in st.session_state :
     Questions_for_form = fetch_format_questions_from_db(ts_id=st.session_state.test_details["test_id"], tp_id=st.session_state.test_details["topic_id"])
     if "display_Questions" in st.session_state:
         for i in range(len(Questions_for_form)):
-            display_questions_in_form(Questions_for_form[i])
+            display_questions_in_form(Questions_for_form[i], st.session_state.rerun_counter)
+            # // st.session_state.form_counter += 1
 
 
 #  // st.session_state       
@@ -309,8 +318,8 @@ Please format the response in markdown, with each (i repeat each) question start
 # w-flow: now i want to get Questions for this prompt and calculate the score of user
 # if any section ahs empty Questions then i want to handle it here as welll
     # Queries 
-    Query_wrong_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = false"""
-    Query_correct_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = true"""
+    Query_wrong_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = False"""
+    Query_correct_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = True"""
     Query_not_attempted_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness is null"""
     # connecting to database
     
@@ -329,7 +338,7 @@ Please format the response in markdown, with each (i repeat each) question start
     not_attempted_questions = my_cur.fetchall()
     my_cur.execute("select topic_name from Topics where topic_id = %s", (topic_id,))
     topic_name = my_cur.fetchone()
-    my_cur.execute("select question_type,count(*) from Questions where Test_id = %s and topic_id = %s and correctness = true group by question_type", (test_id, topic_id))
+    my_cur.execute("select question_type,count(*) from Questions where Test_id = %s and topic_id = %s and correctness = True group by question_type", (test_id, topic_id))
     correct_questions_by_type = my_cur.fetchall()
     my_cur.execute("select easy_Questions,medium_Questions,difficult_Questions from Tests where test_id = %s and topic_id = %s", (test_id,topic_id))
     total_questions = my_cur.fetchone()
@@ -400,7 +409,7 @@ Please format the response in markdown, with each (i repeat each) question start
     dict_to_return["test_details"] = st.session_state.test_details
     return dict_to_return
     
-st.session_state
+# // st.session_state
 # 2. store in a markdown file
 def store_in_markdown_file(model_instance,res_in_db_dict:dict):
 
