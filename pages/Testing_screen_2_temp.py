@@ -8,18 +8,18 @@ import datetime as dt
 import os
 import math
 # initialization
-st.session_state
+#// st.session_state
 api_key_from_func = su.get_mykey()
 genai.configure(api_key=api_key_from_func)
 # configure genai for model
 model_conf = {
     "temperature": 0.9,
     "top_p": 1,
-    "top_k": 64,
+    "top_k": 20,
     "max_output_tokens": 8192,
     "response_mime_type": "text/plain"}
 model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=model_conf)
-
+my_host, my_user, my_passwd, dbname = su.getconnnames()
 
 #  tasks
 # 1. generate form for test 
@@ -38,6 +38,16 @@ model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=m
         # 2. store in a markdown file
         # 3. store in database and display as a dialog + get st.sessionstate.display_questions deleted
 
+if 'rerun_counter' not in st.session_state:
+    st.session_state.rerun_counter = 0
+
+st.session_state.rerun_counter += 1
+
+# seg-expl removing the formsubmitter with last id = anything but reruncounter
+# ! dangerous
+for key in st.session_state:
+    if key.startswith("FormSubmitter") and not key.endswith(str(st.session_state.rerun_counter)) and key != "FormSubmitter:test creting form-Test what i learnt" :
+        del st.session_state[key]
 
 # 1. generate form for test 
 #     (DB ) 2. store in database for backend
@@ -48,10 +58,10 @@ def store_test_in_db(eno, mno, hno, topic_id, tp_name):
         return 0
     else:
         the_db = conn.connect(
-            host = "localhost",
-            user = "Ruhi",
-            passwd = "Ruhi@5084",
-            database = "consistancy"
+            host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
         )
         the_cur = the_db.cursor()
         the_cur.execute("Insert into Tests (easy_Questions,medium_Questions,difficult_Questions,topic_id) values (%s,%s,%s,%s)",(int(eno),int(mno),int(hno),topic_id))
@@ -64,10 +74,10 @@ def store_test_in_db(eno, mno, hno, topic_id, tp_name):
 #     (UI ) 1. create form for fornt end 
 with st.form("test creting form"):
     db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+        user = my_user,
+        passwd = my_passwd,
+        database = dbname
     )
     cur = db.cursor()
     cur.execute("Select topic_id, topic_name from Topics where topic_type = 'skills'")
@@ -89,6 +99,7 @@ with st.form("test creting form"):
 #     (st_session state) 3. return dict of test_id, topic_id, easy_qs, medium_qs, difficult_qs
         st.session_state.test_details = store_test_in_db(eno=easy_num, mno=mid_num, hno=hard_num, topic_id=topic[0], tp_name=topic[1])
         st.session_state.generate_questions = True
+        
 # 2. get Questions
 # (separate function to call) 2. generate Questions and put in databse
 def Questions_already_in_db_fetch_for_prompt(test_id, topic_id,level):
@@ -137,10 +148,10 @@ def generate_questions_and_put_in_db(Test_id, topic_id, level, model, question_n
     # // response = model.generate(prompt=myprompt, max_tokens=200, temperature=0.9, top_p=1, top_k=64, stop="NEXT_QUESTION")
     res = model.generate_content(myprompt)
     my_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
     )
     my_cur = my_db.cursor()
     my_cur.execute("INSERT INTO Questions (Test_id, Topic_id, Question_no, Question_type, Question) VALUES (%s, %s, %s, %s, %s)", (Test_id, topic_id, question_no,level, res.text))
@@ -156,10 +167,10 @@ def fetch_format_questions_from_db(ts_id, tp_id):
     # Done: think how to handel evaluation
     my_lis = []
     my_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
     )
     my_cur = my_db.cursor()
     my_cur.execute("Select question_no, question, question_type from Questions where Test_id = %s and topic_id = %s", (ts_id,tp_id))
@@ -196,10 +207,10 @@ def evaluate_and_store_answers(d_of_qs_with_ans: dict, model_instance):
     # * store answer in database
     if score > 0:
         my_db_of_qs = conn.connect(
-            host = "localhost",
-            user = "Ruhi",
-            passwd = "Ruhi@5084",
-            database = "consistancy")
+            host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname)
         my_cur_of_qs = my_db_of_qs.cursor()
         if score == 1:
             answer_correct_bool = True
@@ -217,14 +228,18 @@ def evaluate_and_store_answers(d_of_qs_with_ans: dict, model_instance):
 
 evaluate_and_store_answers_partial = partial(evaluate_and_store_answers, model_instance=model)
 generate_questions_and_put_in_db_partial = partial(generate_questions_and_put_in_db, model=model)
+
+# seg-expl adding form counter to handel reruns
+
+
 # (UI func) 4. display Questions in the form of a form
 @st.fragment
-def display_questions_in_form(d_of_qs: dict):
-    form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}"
+def display_questions_in_form(d_of_qs: dict, rrc: int):
+    form_title = f"{d_of_qs['Question_type']} Question {d_of_qs['Question_no']}_{rrc}"
     with st.form(form_title):
         st.markdown("### Level: "+ d_of_qs['Question_type'])
         st.write(d_of_qs['Question'])
-        user_answer =st.text_area("Answer", key=f"ans_{d_of_qs['Question_no']}")
+        user_answer =st.text_area("Answer", key = f"ans_{form_title}")
         sbut = st.form_submit_button(f"Submit {form_title}")
         if sbut:
             # ill just return answer and Question no by a function_call
@@ -259,7 +274,8 @@ if "test_details" in st.session_state :
     Questions_for_form = fetch_format_questions_from_db(ts_id=st.session_state.test_details["test_id"], tp_id=st.session_state.test_details["topic_id"])
     if "display_Questions" in st.session_state:
         for i in range(len(Questions_for_form)):
-            display_questions_in_form(Questions_for_form[i])
+            display_questions_in_form(Questions_for_form[i], st.session_state.rerun_counter)
+            # // st.session_state.form_counter += 1
 
 
 #  // st.session_state       
@@ -302,16 +318,16 @@ Please format the response in markdown, with each (i repeat each) question start
 # w-flow: now i want to get Questions for this prompt and calculate the score of user
 # if any section ahs empty Questions then i want to handle it here as welll
     # Queries 
-    Query_wrong_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = false"""
-    Query_correct_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = true"""
-    Query_not_attempted_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = null"""
+    Query_wrong_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = False"""
+    Query_correct_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness = True"""
+    Query_not_attempted_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness is null"""
     # connecting to database
     
     my_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy"
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname
     )
     my_cur = my_db.cursor()
     my_cur.execute(Query_wrong_Questions, (test_id, topic_id))
@@ -322,7 +338,7 @@ Please format the response in markdown, with each (i repeat each) question start
     not_attempted_questions = my_cur.fetchall()
     my_cur.execute("select topic_name from Topics where topic_id = %s", (topic_id,))
     topic_name = my_cur.fetchone()
-    my_cur.execute("select question_type,count(*) from Questions where Test_id = %s and topic_id = %s and correctness = true group by question_type", (test_id, topic_id))
+    my_cur.execute("select question_type,count(*) from Questions where Test_id = %s and topic_id = %s and correctness = True group by question_type", (test_id, topic_id))
     correct_questions_by_type = my_cur.fetchall()
     my_cur.execute("select easy_Questions,medium_Questions,difficult_Questions from Tests where test_id = %s and topic_id = %s", (test_id,topic_id))
     total_questions = my_cur.fetchone()
@@ -393,7 +409,7 @@ Please format the response in markdown, with each (i repeat each) question start
     dict_to_return["test_details"] = st.session_state.test_details
     return dict_to_return
     
-st.session_state
+# // st.session_state
 # 2. store in a markdown file
 def store_in_markdown_file(model_instance,res_in_db_dict:dict):
 
@@ -479,10 +495,10 @@ def display_evaluations(markdown_string,md_name, ts_det):
     # )
     # done above was the actual error()
     res_db = conn.connect(
-        host = "localhost",
-        user = "Ruhi",
-        passwd = "Ruhi@5084",
-        database = "consistancy")
+        host = my_host,
+            user = my_user,
+            passwd = my_passwd,
+            database = dbname)
     cur = res_db.cursor()
     cur.execute("update tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s", (math.ceil(ts_det["score"]),markdown_string, test_id, topic_id))
     res_db.commit()
