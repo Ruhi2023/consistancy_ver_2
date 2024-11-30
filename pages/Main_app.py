@@ -52,6 +52,8 @@ def validate_inp(inp_txt,validate_name):
         st.warning("Please enter your {}".format(validate_name))
         return False
     regx_patten = r'^[a-zA-Z0-9& ]*$'
+    if validate_name == "project_description":
+        regx_patten = r'^.*$'
     val = bool(re.match(regx_patten, inp_txt))
     warning = "Your {} is not in valid format. valid characters are alphabets, digits, and characters '&' and ' ' ".format(validate_name)
     if not val:
