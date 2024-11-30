@@ -4,6 +4,7 @@ api_key.txt
 Sora.txt
 prompts.txt
 Architecture Consistancy.png
+Assets/*.json
 # the md files used for results
 *.md
 # utility scripts folder 

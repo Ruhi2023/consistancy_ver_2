@@ -1,13 +1,23 @@
 from mysql import connector
 import streamlit as st
 import os
+import json
 # i am checking if database exists
-dbname = 'consistancy'
 
+def getconnnames():
+    path = os.path.join(os.getcwd(), "Assets", "db_details.json")
+    with open(path, 'r',encoding='utf-8') as f:
+        data = json.load(f)
+    db = "consistancy"
+    host = data['host']
+    user = data['user']
+    passwd = data['password']
+    return (host, user, passwd,db)
+my_host, my_user, my_passwd, dbname = getconnnames()
 a_conn = connector.connect(
-    host = 'localhost',
-    user = 'Ruhi',
-    passwd = 'Ruhi@5084'
+    host = my_host,
+    user = my_user,
+    passwd = my_passwd
 )
 
 cur = a_conn.cursor()
@@ -23,9 +33,9 @@ else:
 a_conn.close()
 
 the_db_conn = connector.connect(
-    host = 'localhost',
-    user = 'Ruhi',
-    passwd = 'Ruhi@5084',
+    host = my_host,
+    user = my_user,
+    passwd = my_passwd,
     database = dbname
 )
 
@@ -47,14 +57,29 @@ CREATE TABLE if not exists my_progress (
     Foreign key(test_id) REFERENCES Tests(Test_id),
     Method_Summary_User text,
     Method_Summary_Sugg text,
-    What_did_i_lack text
+    What_did_i_lack text,
+    workflow_qs int check(workflow_qs >= 6 and workflow_qs <= 21)
 )
 """
+# * topic id in the above table will only be for project/practials topics
 Query_create_struggles = """
 CREATE TABLE if not exists struggles (
     The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP primary key,
     The_struggle TEXT,
     The_suggestion TEXT
+)
+"""
+Query_create_workflow_qs = """
+Create table if not exists workflow_questions (
+    The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Question_no INT check( Question_no<=21),
+    Question TEXT,
+    User_Answer TEXT,
+    topic_id int,
+    Foreign key(topic_id) REFERENCES Topics(topic_id),
+    test_id int,
+    Foreign key(test_id) REFERENCES Tests(test_id),
+    constraint specific_question Primary key (Question_no, topic_id, test_id)   
 )
 """
 Query_create_ideas_table = """
@@ -111,16 +136,16 @@ print("Questions table created")
 cur.execute(Query_create_my_progress)
 cur.execute(Query_create_struggles)
 cur.execute(Query_create_ideas_table)
+cur.execute(Query_create_workflow_qs)
 the_db_conn.commit()
 the_db_conn.close()
 
 def connnecting():
     db = connector.connect(
-        host = 'localhost',
-        user = 'Ruhi',
-        passwd = 'Ruhi@5084',
-        database = dbname,
-        connection_timeout=3600
+        host = my_host,
+        user = my_user,
+        passwd = my_passwd,
+        database = dbname
     )
 
     cur = db.cursor()

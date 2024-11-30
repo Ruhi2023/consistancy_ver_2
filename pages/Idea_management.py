@@ -2,6 +2,9 @@ import streamlit as st
 import datetime as dt 
 import Consistancy_tables as su 
 import time
+import mysql.connector as conn
+
+my_host, my_user, my_passwd, dbname = su.getconnnames()
 
 def fetch_status_counts():
     the_db, cursor = su.connnecting()
@@ -45,7 +48,8 @@ def display_tree_structure():
 
 
 def manage_callback(upd,heading, disc, implementable,status, category, id_of_idea):
-    My_db, My_cur = su.connnecting()
+    My_db = conn.connect(host = my_host, user = my_user, passwd = my_passwd, database = dbname)
+    My_cur = My_db.cursor()
     if upd == "Yes":
         print("updating")
         if id_of_idea is not None:
