@@ -84,7 +84,7 @@ def get_answer(prompt):
     generation_config = {
           "temperature": 0.9,
           "top_p": 0.95,
-          "top_k": 64,
+          "top_k": 20,
           "max_output_tokens": 8192,
           "response_mime_type": "text/plain",
         }
@@ -98,8 +98,8 @@ def get_answer(prompt):
 If you identify an opportunity for improvement, provide a suggestion enclosed within the special markers #IMPSUG:STA# and #IMPSUG:END#. 
 However, only include a suggestion if you find a meaningful area for improvement—don't suggest changes for every message, only when there's a clear opportunity for enhancement.
 """
-    if len(st.session_state.chat_hist_stru) > 8:
-        prev = st.session_state.chat_hist_stru[-8:]
+    if len(st.session_state.chat_hist_stru) > 26:
+        prev = st.session_state.chat_hist_stru[-26:]
     else:
         prev = st.session_state.chat_hist_stru
     res = model.generate_content([str({"CONTEXT for refrence not needed in reply ": addition}),str({" CHAT HISTORY For refrence, HISTORY not needed in reply":prev}), str({"user's MESSAGE you need to reply as the acting as the person provided for in context":prompt})])
