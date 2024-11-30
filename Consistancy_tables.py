@@ -72,7 +72,7 @@ CREATE TABLE if not exists struggles (
 Query_create_workflow_qs = """
 Create table if not exists workflow_questions (
     The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Question_no INT check(Question_no>=6 and Question_no<=19),
+    Question_no INT check( Question_no<=21),
     Question TEXT,
     User_Answer TEXT,
     topic_id int,
