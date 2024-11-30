@@ -72,7 +72,9 @@ for key in st.session_state:
 
 
 
-
+if "topic_id_project" not in st.session_state:
+    st.write("No topic selected")
+    st.page_link(page= "pages/Main_app.py",label="Go Home to add a topic", icon="🏠")
 
 
 
@@ -384,7 +386,7 @@ if "p_test_details" in st.session_state:
             for i in range(len(Qs_understanding)):
                 display_qs_forms(Qs_understanding[i])
 
-st.session_state
+
 # 3. handel evaluations
 # done: all Questions are stored in db with their answers, understanding Questions have been stored with correctness as well
 
@@ -436,7 +438,7 @@ Please format the response in markdown, with each (i repeat each) question start
     
     m_db = conn.connect(host = my_host, user = my_user, passwd = pswd, database = dbname)
     cursor = m_db.cursor()
-    cursor.execute("select topic_name, topic_description from topics where topic_id = %s", (topic_id))
+    cursor.execute("select topic_name, topic_description from topics where topic_id = %s", (topic_id,))
     topic_name = cursor.fetchone()
     cursor.execute(Query_wrong_Questions, (test_id, topic_id))
     wrong_qs = cursor.fetchall()
@@ -516,7 +518,7 @@ Please format the response in markdown, with each (i repeat each) question start
             prompt_for_workflow_answers_lis = []
             for i in range(len(workflow_ans_li)):
                 qs_for_prompt = " ".join(workflow_ans_li[i])
-                prompt_temp = prompt_for_workflow_qs.format(topic_name =topic_name[0]) + qs_for_prompt
+                prompt_temp = prompt_for_workflow_qs.format(topic_name =topic_name[0], topic_desc = topic_name[1]) + qs_for_prompt
                 prompt_for_workflow_answers_lis.append(prompt_temp)
             dict_to_return["Workflow Questions"] = prompt_for_workflow_answers_lis
         else:
@@ -526,10 +528,10 @@ Please format the response in markdown, with each (i repeat each) question start
     weightage = {"easy":1, "medium":2,"difficult":3}
     acc_score = sum(weightage[cat] *count for cat, count in corr_qs_by_type)
     dict_to_return["Over_all_score"] = (acc_score/max_score)*100
-    dict_to_return["test_details"] = st.session_state.p_test_details
+    dict_to_return["p_test_details"] = st.session_state.p_test_details
     return dict_to_return
 
-def generate_mds_and_md_file(model_instance, returned_dict:dict):
+def generate_mds_and_md_file( returned_dict:dict,model_instance):
 
     file_na = os.path.join(os.getcwd(),"Assets","Results", f"{returned_dict['p_test_details']['topic_name']}_test_{returned_dict['p_test_details']['test_id']}.md")
     with open(file_na, "w", encoding="utf-8") as f:
@@ -582,13 +584,11 @@ def generate_mds_and_md_file(model_instance, returned_dict:dict):
     # w-flow: i made this section to better the workflow based on context i will provide
     impoved_workflow_prompt = """based on the below conversation and improvements provided a better way to do what i did step by step.
 The Answer should be in markdown style starting with heading 3.
-CONTEXT: \{CONVERSATION USED TO ASK FOR IMPROVEMENT SUGGESTIONS:
-{Per_prompt}
-\}
-\{ANSWER I GOT:
+CONTEXT: /{{CONVERSATION USED TO ASK FOR IMPROVEMENT SUGGESTIONS:
+{Per_prompt},
+ANSWER I GOT:
 {imp_ans}
- \}
-""".format(Per_prompt = returned_dict["Workflow Questions"], imp_ans = workflow_section_str)
+/}}""".format(Per_prompt = returned_dict["Workflow Questions"], imp_ans = workflow_section_str)
     res = model_instance.generate_content(impoved_workflow_prompt)
     better_my_wrokflow_section_str = res.text
 
@@ -602,7 +602,7 @@ CONTEXT: \{CONVERSATION USED TO ASK FOR IMPROVEMENT SUGGESTIONS:
     
     with open(file_na, "r", encoding="utf-8") as f:
         markdown_content = f.read()
-    test_det_dict = returned_dict["test_details"]
+    test_det_dict = returned_dict["p_test_details"]
     test_det_dict["score"] = returned_dict["Over_all_score"]
     return markdown_content, file_na, test_det_dict
 generate_mds_and_md_file_partial = partial(generate_mds_and_md_file, model_instance = model)
@@ -623,7 +623,7 @@ def callable_display_func(markdown_str, file_name, ts_dict):
         database = dbname
     )
     cur = db.cursor()
-    cur.execute("UPDATE tests set score = %s, suggestion = %s where test_id = %s and topic_id = %s", (ceil(ts_dict["score"]), markdown_str, test_id, topic_id))
+    cur.execute("UPDATE tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s", (ceil(ts_dict["score"]), markdown_str, test_id, topic_id))
     db.commit()
     cur.close()
     db.close()
@@ -636,6 +636,6 @@ def callable_display_func(markdown_str, file_name, ts_dict):
 if "p_test_details" in st.session_state:
     eval_btn = st.button("Evaluate the Activity")
     if eval_btn:
-        eval_res_dict = format_qs_and_workflow_ans(st.session_state.p_test_details["test_id"], st.session_state.p_test_details["topic_id"])
+        eval_res_dict = format_qs_and_workflow_ans(topic_id=st.session_state.p_test_details["topic_id"], test_id=st.session_state.p_test_details["test_id"])
         res_md, res_md_name, ts_det_dict = generate_mds_and_md_file_partial(eval_res_dict)
         callable_display_func(res_md, res_md_name, ts_det_dict)
