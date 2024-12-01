@@ -103,7 +103,8 @@ CREATE TABLE if not exists Questions (
     test_id int,
     Foreign key(topic_id) REFERENCES Topics(topic_id),
     Foreign key(test_id) REFERENCES Tests(test_id),
-    correctness BOOLEAN) """
+    correctness BOOLEAN,
+    constraint UC_QUE unique (question_no, test_id,question_type) )"""
 Query_Create_Tests_table = """
 CREATE TABLE if not exists Tests (
     test_id INT AUTO_INCREMENT PRIMARY KEY,

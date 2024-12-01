@@ -48,6 +48,7 @@ def get_name():
         else:
             st.error("Please fill all the fields")
         st.session_state["friend_file"] = os.path.join(path_to_sora, f"{name}.txt")
+        st.session_state["friend_name"] = name
     elif len(list_of_friends) >= 1:
         # select the friend and then return the path
         if "Add new friend" not in list_of_friends:
@@ -67,8 +68,10 @@ def get_name():
             else:
                 st.error("Please fill all the fields")
             st.session_state["friend_file"] = os.path.join(path_to_sora, f"{name}.txt")
+            st.session_state["friend_name"] = name
         else:
             st.session_state["friend_file"] =  os.path.join(path_to_sora, fr_name)
+            st.session_state["friend_name"] = fr_name.split(".")[0]
     
 
 
@@ -137,6 +140,12 @@ def see_for_improvement(suggestion, strug):
 if 'chat_hist_stru' not in st.session_state:
     st.session_state.chat_hist_stru = []
 # display the chat messages 
+st.write("You are conversing with ")
+if "friend_name" in st.session_state:
+    st.header(st.session_state.friend_name)
+else:
+    st.header("NO ONE")
+    st.warning("Please add a friend before you give message")
 for message in st.session_state.chat_hist_stru:
     with st.chat_message(message['role']):
         st.markdown(message['content'])
