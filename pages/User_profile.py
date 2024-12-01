@@ -1,6 +1,7 @@
 import streamlit as st 
 import mysql.connector as conn
 import pandas as pd 
+import datetime as dt
 import matplotlib.pyplot as plt
 import Consistancy_tables as su
 my_host, my_user, my_passwd, dbname = su.getconnnames()
@@ -34,6 +35,20 @@ def create_df(dat, col):
 tests_df = create_df(tests_dat, tests_col)
 topics_df = create_df(topics_dat, topics_col)
 qs_df = create_df(qs_dat, qs_col)
+
+# w-flow: score user for consistancy
+sorted_test_df = tests_df.sort_values(by=["test_date"])
+sorted_test_df["test_date"] = sorted_test_df["test_date"].dt.date
+sco_date_wise= sorted_test_df.groupby(["test_date"],as_index=False)["score"].sum()
+start_date = sorted_test_df["test_date"].min()
+end_date = sorted_test_df["test_date"].max()
+inconsistant_days = (end_date - start_date).days - sco_date_wise[sco_date_wise["score"]!=0].count().shape[0]
+st.write(inconsistant_days)
+
+# check if the user was consistant for last 5 days in row 
+df_last_5 = pd.DataFrame({"dates": pd.date_range(start_date, end_date, freq='D')})
+print(df_last_5)
+
 
 # w-flow: tests_per week user 
 # //print(tests_df.info())
@@ -122,6 +137,14 @@ plt_sk = tp_per_wk["topic_id"].unstack(fill_value=0)
 st.line_chart(plt_sk, x_label="Date", y_label="Number of Topics", use_container_width=True)
 
 st.write(sco_sum_by_day.tail())
+if sco_sum_by_day["score"].sum() > 0:
+    st.header("Your total consistancy score is: ")
+    st.write(sco_sum_by_day["score"].sum())
+else:
+    sc_0 =sco_sum_by_day[sco_sum_by_day["score"] == 0].count()
+    st.header("Your total consistancy score is: ")
+    st.write(sco_sum_by_day["score"].sum()-sc_0["score"])
+    st.write("to remove debuff you will have to be consistant for 7 days in a row")
 # // st.write(tests_df)
 # // st.write(topics_df)
 # // st.write(qs_df)
