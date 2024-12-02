@@ -39,6 +39,23 @@ my_host, my_user, my_password, my_db_name = su.getconnnames()
 # data = My_cur.fetchall()
 # st.data_editor(data, use_container_width=True)
 
+def Get_next_steps():
+    """Baiscally it will help me get the suggestions via chat imporvements"""
+    m_db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
+    m_cur = m_db.cursor()
+    # getting struggles
+    m_cur.execute("SELECT * FROM struggles where The_date >= date_sub(curdate(),interval 20 day)")
+    data = m_cur.fetchall()
+    prompt_next_steps = f"""These are some struggles that i had during the past 20 days. Analyse this data and convert it into some actionable steps that i can take to improve. {data}"""
+    gen_conf = {
+        "temperature": 0.9,
+        "top_p": 0.95,
+        "top_k": 20,
+        "max_output_tokens": 8192,
+    }
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=gen_conf)
+    res = model.generate_content(prompt_next_steps)
+    return res.text
 
 def Give_data():
     """Baiscally it will help me get the suggestions via tests table"""
@@ -64,8 +81,12 @@ def stream_write(text):
         yield i + " "
 col1,col2, col3 = st.columns([1,3,1])
 sug = col1.button("Get Suggestions for improvement")
+strug = col3.button("Get Advice")
 if sug:
     text = Give_data()
+    st.write_stream(stream_write(text))
+if strug:
+    text = Get_next_steps()
     st.write_stream(stream_write(text))
 
 
@@ -160,11 +181,13 @@ st.line_chart(test_id_by_test_score_df, x="test_id", y="score", use_container_wi
 qs_df = create_dfs(Questions_table, Questions_columns)
 def gen_charts(topic_id):
     for id in test_df[test_df['topic_id'] == topic_id]['test_id']:
-        st.markdown("### Test "+str(id)+" Questions")
-        qs = qs_df[qs_df['test_id'] == id][['question_type','correctness']]
-        dat =qs.groupby(['question_type', 'correctness']).size().unstack(fill_value=0)
-        st.bar_chart(dat, use_container_width=True,x_label="Question Type for test "+str(id), y_label="correctiness number",color=["#FF0000", "#0000FF"])
-        
+        try:
+            st.markdown("### Test "+str(id)+" Questions")
+            qs = qs_df[qs_df['test_id'] == id][['question_type','correctness']]
+            dat =qs.groupby(['question_type', 'correctness']).size().unstack(fill_value=0)
+            st.bar_chart(dat, use_container_width=True,x_label="Question Type for test "+str(id), y_label="correctiness number",color=["#FF0000", "#0000FF"])
+        except:
+            st.error("No questions found for test "+str(id))
 
 with st.form("Topic to fetch"):
     dd = topics_df.loc[:,["topic_id","topic_name"]].to_dict()
@@ -181,10 +204,8 @@ with st.form("Topic to fetch"):
     print(topic_id)
     submit_button = st.form_submit_button("Submit")
     if submit_button:
-        try:
             gen_charts(topic_id[0])
-        except:
-            st.warning("No tests for this topic")
+
 
 # dat = pd.DataFrame(topics_df["topic_start_date"].groupby(topics_df["topic_type"]).value_counts())
 # dat_df = dat.reset_index(inplace=False)
