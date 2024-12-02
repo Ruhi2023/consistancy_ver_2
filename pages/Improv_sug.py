@@ -181,7 +181,10 @@ with st.form("Topic to fetch"):
     print(topic_id)
     submit_button = st.form_submit_button("Submit")
     if submit_button:
-        gen_charts(topic_id[0])
+        try:
+            gen_charts(topic_id[0])
+        except:
+            st.warning("No tests for this topic")
 
 # dat = pd.DataFrame(topics_df["topic_start_date"].groupby(topics_df["topic_type"]).value_counts())
 # dat_df = dat.reset_index(inplace=False)
