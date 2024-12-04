@@ -4,7 +4,7 @@ import os
 import google.generativeai as genai
 import Consistancy_tables as su
 import mysql.connector as conn
-
+import pandas as pd
 
 # def get_mykey():
 #     found = 0
@@ -75,12 +75,32 @@ def Give_data():
     model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=generation_config)
     res = model.generate_content(prompt_next_steps)
     return res.text
-
+def get_ideas():
+    """Gets data from tests table test id test_date, 
+    gets topic_id, topic_name form topics table"""
+    db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
+    cur = db.cursor()
+    Query_topics_i_did = "select topics.topic_id, topics.topic_name, topic.topic_description, avg(tests.score), string_agg(tests.suggestions, ' \n\n\n\n ') as tests.suggestions from tests left join topics on tests.topic_id = topics. topic_id group by topic_id"
+    cur.execute(Query_topics_i_did)
+    tp_i_did = cur.fetchall()
+    cur.execute()
+    prompt_My_progress_suggestions = f"""I have done some tests on topics and i have got some suggestions for the same. Analyse this data and convert it into some actionable steps. Guide me in the right direction for what i am doing. {tp_i_did}"""
+    generation_config = {
+        "temperature": 0.9,
+        "top_p": 0.95,
+        "top_k": 20,
+        "max_output_tokens": 8192,
+        "response_mime_type": "text/plain",
+    }
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=generation_config)
+    res = model.generate_content(prompt_My_progress_suggestions)
+    return res.text
 def stream_write(text):
     for i in text.split(" "):
         yield i + " "
 col1,col2, col3 = st.columns([1,3,1])
 sug = col1.button("Get Suggestions for improvement")
+idea_but = col2.button("Get Path for next steps")
 strug = col3.button("Get Advice")
 if sug:
     text = Give_data()
@@ -88,13 +108,15 @@ if sug:
 if strug:
     text = Get_next_steps()
     st.write_stream(stream_write(text))
-
+if idea_but:
+    text = get_ideas()
+    st.write_stream(stream_write(text))
 
 
 # st.write(data)
 
 # w-flow finally starting to create a summary
-import pandas as pd
+
 # // import matplotlib.pyplot as plt
 
 # seg-expl: get topics for analysis
@@ -181,13 +203,15 @@ st.line_chart(test_id_by_test_score_df, x="test_id", y="score", use_container_wi
 qs_df = create_dfs(Questions_table, Questions_columns)
 def gen_charts(topic_id):
     for id in test_df[test_df['topic_id'] == topic_id]['test_id']:
-        try:
-            st.markdown("### Test "+str(id)+" Questions")
-            qs = qs_df[qs_df['test_id'] == id][['question_type','correctness']]
-            dat =qs.groupby(['question_type', 'correctness']).size().unstack(fill_value=0)
-            st.bar_chart(dat, use_container_width=True,x_label="Question Type for test "+str(id), y_label="correctiness number",color=["#FF0000", "#0000FF"])
-        except:
-            st.error("No questions found for test "+str(id))
+    
+        st.markdown("### Test "+str(id)+" Questions")
+        qs = qs_df[qs_df['test_id'] == id][['question_type','correctness']]
+        qs["correctness"]= qs["correctness"].fillna(0)
+        dat =qs.groupby(['question_type', 'correctness']).size().unstack(fill_value=0)
+        
+        st.bar_chart(dat, use_container_width=True,x_label="Question Type for test "+str(id), y_label="correctiness number")
+        # except:
+        #     st.error("No questions found for test "+str(id))
 
 with st.form("Topic to fetch"):
     dd = topics_df.loc[:,["topic_id","topic_name"]].to_dict()
