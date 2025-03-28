@@ -48,6 +48,7 @@ def get_name():
         else:
             st.error("Please fill all the fields")
         st.session_state["friend_file"] = os.path.join(path_to_sora, f"{name}.txt")
+        st.session_state["friend_name"] = name
     elif len(list_of_friends) >= 1:
         # select the friend and then return the path
         if "Add new friend" not in list_of_friends:
@@ -67,8 +68,10 @@ def get_name():
             else:
                 st.error("Please fill all the fields")
             st.session_state["friend_file"] = os.path.join(path_to_sora, f"{name}.txt")
+            st.session_state["friend_name"] = name
         else:
             st.session_state["friend_file"] =  os.path.join(path_to_sora, fr_name)
+            st.session_state["friend_name"] = fr_name.split(".")[0]
     
 
 
@@ -84,7 +87,7 @@ def get_answer(prompt):
     generation_config = {
           "temperature": 0.9,
           "top_p": 0.95,
-          "top_k": 64,
+          "top_k": 20,
           "max_output_tokens": 8192,
           "response_mime_type": "text/plain",
         }
@@ -98,8 +101,8 @@ def get_answer(prompt):
 If you identify an opportunity for improvement, provide a suggestion enclosed within the special markers #IMPSUG:STA# and #IMPSUG:END#. 
 However, only include a suggestion if you find a meaningful area for improvement—don't suggest changes for every message, only when there's a clear opportunity for enhancement.
 """
-    if len(st.session_state.chat_hist_stru) > 8:
-        prev = st.session_state.chat_hist_stru[-8:]
+    if len(st.session_state.chat_hist_stru) > 26:
+        prev = st.session_state.chat_hist_stru[-26:]
     else:
         prev = st.session_state.chat_hist_stru
     res = model.generate_content([str({"CONTEXT for refrence not needed in reply ": addition}),str({" CHAT HISTORY For refrence, HISTORY not needed in reply":prev}), str({"user's MESSAGE you need to reply as the acting as the person provided for in context":prompt})])
@@ -137,6 +140,12 @@ def see_for_improvement(suggestion, strug):
 if 'chat_hist_stru' not in st.session_state:
     st.session_state.chat_hist_stru = []
 # display the chat messages 
+st.write("You are conversing with ")
+if "friend_name" in st.session_state:
+    st.header(st.session_state.friend_name)
+else:
+    st.header("NO ONE")
+    st.warning("Please add a friend before you give message")
 for message in st.session_state.chat_hist_stru:
     with st.chat_message(message['role']):
         st.markdown(message['content'])
