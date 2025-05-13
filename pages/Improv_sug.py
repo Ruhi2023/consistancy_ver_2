@@ -80,10 +80,9 @@ def get_ideas():
     gets topic_id, topic_name form topics table"""
     db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
     cur = db.cursor()
-    Query_topics_i_did = "select topics.topic_id, topics.topic_name, topic.topic_description, avg(tests.score), string_agg(tests.suggestions, ' \n\n\n\n ') as tests.suggestions from tests left join topics on tests.topic_id = topics. topic_id group by topic_id"
+    Query_topics_i_did = "select topics.topic_id, topics.topic_name, topics.topic_description, avg(tests.score), group_concat(tests.suggestions,' \n\n\n\n ') as suggestions from tests left join topics on tests.topic_id = topics. topic_id group by topic_id"
     cur.execute(Query_topics_i_did)
     tp_i_did = cur.fetchall()
-    cur.execute()
     prompt_My_progress_suggestions = f"""I have done some tests on topics and i have got some suggestions for the same. Analyse this data and convert it into some actionable steps. Guide me in the right direction for what i am doing. {tp_i_did}"""
     generation_config = {
         "temperature": 0.9,
