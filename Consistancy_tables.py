@@ -48,6 +48,18 @@ cur = the_db_conn.cursor()
 #     The_test_result INT,
 #     The_suggestion TEXT)
 # """
+Query_create_users_table = """
+CREATE TABLE if not exists users (
+    user_id int primary key AUTO_INCREMENT,
+    username VARCHAR(255) unique,
+    name VARCHAR(255),
+    passwd VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP,
+    is_active BOOLEAN
+)
+"""
+
 Query_create_my_progress = """
 CREATE TABLE if not exists my_progress (
     Today datetime Default current_timestamp,
@@ -55,6 +67,7 @@ CREATE TABLE if not exists my_progress (
     test_id int,
     Foreign key(topic_id) REFERENCES Topics(Topic_id),
     Foreign key(test_id) REFERENCES Tests(Test_id),
+    Foreign key(user_id) REFERENCES users(user_id),
     Method_Summary_User text,
     Method_Summary_Sugg text,
     What_did_i_lack text,
@@ -65,6 +78,7 @@ CREATE TABLE if not exists my_progress (
 Query_create_struggles = """
 CREATE TABLE if not exists struggles (
     The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP primary key,
+    Foreign key(user_id) REFERENCES users(user_id),
     The_struggle TEXT,
     The_suggestion TEXT
 )
@@ -76,6 +90,7 @@ Create table if not exists workflow_questions (
     Question TEXT,
     User_Answer TEXT,
     topic_id int,
+    Foreign key(user_id) REFERENCES users(user_id),
     Foreign key(topic_id) REFERENCES Topics(topic_id),
     test_id int,
     Foreign key(test_id) REFERENCES Tests(test_id),
@@ -85,6 +100,7 @@ Create table if not exists workflow_questions (
 Query_create_ideas_table = """
 CREATE TABLE if not exists ideas (
     The_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP primary key,
+    Foreign key(user_id) REFERENCES users(user_id),
     Category VARCHAR(255),
     Idea_heading VARCHAR(255),
     Idea_description TEXT,
@@ -101,6 +117,7 @@ CREATE TABLE if not exists Questions (
     user_Answer TEXT default NULL,
     topic_id int,
     test_id int,
+    Foreign key(user_id) REFERENCES users(user_id),
     Foreign key(topic_id) REFERENCES Topics(topic_id),
     Foreign key(test_id) REFERENCES Tests(test_id),
     correctness BOOLEAN,
@@ -113,6 +130,7 @@ CREATE TABLE if not exists Tests (
     medium_Questions int,
     difficult_Questions int,
     topic_id int,
+    Foreign key(user_id) REFERENCES users(user_id),
     Foreign key(topic_id) REFERENCES Topics(topic_id),
     score int check(score <=100),
     suggestions TEXT
@@ -121,13 +139,50 @@ Query_Create_topics_table = """
 CREATE TABLE if not exists Topics (
     topic_start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     topic_id INT AUTO_INCREMENT PRIMARY KEY,
+    Foreign key(user_id) REFERENCES users(user_id),
     topic_name VARCHAR(255) UNIQUE,
     topic_type VARCHAR(255) check(topic_type In('skills', 'projects','ideas_implementation')),
     topic_description TEXT default NULL
 )"""
+Query_create_friends_table = """
+CREATE TABLE if not exists friends (
+    friend_id int primary key AUTO_INCREMENT,
+    Foreign key(user_id) REFERENCES users(user_id),
+    friend_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_public BOOLEAN,
+    last_accessed TIMESTAMP,
+    last_updated TIMESTAMP,
+    friend_prompt TEXT,
+    friend_role VARCHAR(255)
+    )"""
+Query_create_menories_table = """
+CREATE TABLE if not exists memories (
+    id int primary key AUTO_INCREMENT,
+    foreign key(friend_id) REFERENCES friends(friend_id),
+    Foreign key(user_id) REFERENCES users(user_id),
+    memory_type VARCHAR(255) check(memory_type In('likes', 'dislikes','bonding_event','struggles')),
+    memory_content TEXT,
+    memory_created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    memory_updated_at TIMESTAMP,
+    memory_accessed_at TIMESTAMP,
+    memory_title VARCHAR(255),
+    id_reference_milvus int
+)"""
+cur.execute(
+    Query_create_users_table
+)
+the_db_conn.commit()
+print("users table created")
 cur.execute(Query_Create_topics_table)
 the_db_conn.commit()
 print("Topics table created")
+cur.execute(Query_create_friends_table)
+the_db_conn.commit()
+print("friends table created")
+cur.execute(Query_create_menories_table)
+the_db_conn.commit()
+print("memories table created")
 cur.execute(Query_Create_Tests_table)
 the_db_conn.commit()
 print("Tests table created")
