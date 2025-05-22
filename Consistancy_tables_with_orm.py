@@ -109,7 +109,7 @@ class MyProgress(Base):
 class Struggle(Base):
     __tablename__ = 'struggles'
     
-    the_date = Column(TIMESTAMP(timezone=True), default=text('now()'), primary_key=True)
+    the_date = Column(TIMESTAMP(timezone=True), server_default=text('now()'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
     the_struggle = Column(Text, nullable=True)
     the_suggestion = Column(Text, nullable=True)
@@ -120,7 +120,7 @@ class Struggle(Base):
 class WorkflowQuestion(Base):
     __tablename__ = 'workflow_questions'
     
-    the_date = Column(TIMESTAMP(timezone=True), default=text('now()'))
+    the_date = Column(TIMESTAMP(timezone=True), server_default=text('now()'))
     question_no = Column(Integer, primary_key=True)
     question = Column(Text)
     user_answer = Column(Text, nullable=True)
@@ -141,7 +141,7 @@ class WorkflowQuestion(Base):
 class Idea(Base):
     __tablename__ = 'ideas'
     
-    the_date = Column(TIMESTAMP(timezone=True), default=text('now()'), primary_key=True)
+    the_date = Column(TIMESTAMP(timezone=True), server_default=text('now()'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
     category = Column(String(255))
     idea_heading = Column(String(255))
@@ -227,7 +227,7 @@ class ChatHistory(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    chat_date = Column(TIMESTAMP(timezone=True), default=text('now()'))
+    chat_date = Column(TIMESTAMP(timezone=True), server_default=text('now()'))
     chat_data = Column(JSON)
 # Database connection function
 def get_connection_details():
