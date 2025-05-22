@@ -3,7 +3,6 @@ import streamlit as st
 import os
 import google.generativeai as genai
 import Consistancy_tables as su
-import mysql.connector as conn
 import pandas as pd
 
 # def get_mykey():
@@ -41,7 +40,7 @@ my_host, my_user, my_password, my_db_name = su.getconnnames()
 
 def Get_next_steps():
     """Baiscally it will help me get the suggestions via chat imporvements"""
-    m_db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
+    m_db, _ = su.connnecting(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
     m_cur = m_db.cursor()
     # getting struggles
     m_cur.execute("SELECT * FROM struggles where The_date >= date_sub(curdate(),interval 20 day)")
@@ -59,7 +58,7 @@ def Get_next_steps():
 
 def Give_data():
     """Baiscally it will help me get the suggestions via tests table"""
-    My_db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
+    My_db, _ = su.connnecting(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
     My_cur = My_db.cursor()
     My_cur.execute("SELECT suggestions FROM tests where test_date >= date_sub(curdate(),interval 20 day)")
     prog = My_cur.fetchall()
@@ -78,7 +77,7 @@ def Give_data():
 def get_ideas():
     """Gets data from tests table test id test_date, 
     gets topic_id, topic_name form topics table"""
-    db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
+    db, _ = su.connnecting(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
     cur = db.cursor()
     Query_topics_i_did = "select topics.topic_id, topics.topic_name, topics.topic_description, avg(tests.score), group_concat(tests.suggestions,' \n\n\n\n ') as suggestions from tests left join topics on tests.topic_id = topics. topic_id group by topic_id"
     cur.execute(Query_topics_i_did)
@@ -119,10 +118,10 @@ if idea_but:
 # // import matplotlib.pyplot as plt
 
 # seg-expl: get topics for analysis
-my_db = conn.connect(
+my_db, _ = su.connnecting(
     host=my_host,
     user=my_user,
-    password=my_password,
+    passwd=my_password,
     database=my_db_name
 )
 # seg-expl taking all tables for analysis

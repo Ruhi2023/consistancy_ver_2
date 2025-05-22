@@ -1,7 +1,7 @@
 import google.generativeai as genai
 import streamlit as st
 import datetime as dt
-import mysql.connector as conn
+
 import os
 import Consistancy_tables as su
 from functools import partial
@@ -86,7 +86,7 @@ def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
         st.warning("Please select atleast 5 questions from any difficulty level, you can aslo select all easy Questions to try out, there is no restriction on it.")
         return 0
     else:
-        the_db = conn.connect(
+        the_db, _ = su.connnecting(
             host = my_host,
             user = my_user,
             passwd = pswd,
@@ -105,7 +105,7 @@ def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
     # 1.1 UI create form to take in tests 
 # // with st.form("project evaluation form"):
 with st.form("project evaluation form generate test"):
-    the_db = conn.connect(
+    the_db, _ = su.connnecting(
         host = my_host,
         user = my_user,
         passwd = pswd,
@@ -135,7 +135,7 @@ with st.form("project evaluation form generate test"):
         st.session_state.gen_QS_wf_un = True
 
 def fetch_qs_already_in_db(test_id,topic_id,level):
-    my_db = conn.connect(
+    my_db, _ = su.connnecting(
         host = my_host,
         user = my_user,
         passwd = pswd,
@@ -194,7 +194,7 @@ Avoid Duplication with the already generated Questions: {QS_present}""".format(t
         myprompt = wrkflow_qs_prompt
     print(myprompt)
     res = model_inst.generate_content(myprompt)
-    m_db = conn.connect(
+    m_db, _ = su.connnecting(
         host = my_host,
         user = my_user, 
         passwd = pswd,  
@@ -225,7 +225,7 @@ def form_dict_for_front(ts_id,tp_id):
     """
     my_lis1 = []
     my_lis2 = []
-    my_db= conn.connect(
+    my_db, _= su.connnecting(
         host = my_host,
         user = my_user, 
         passwd = pswd,  
@@ -276,7 +276,7 @@ def eval_and_store_pro(d_of_qs_with_ans: dict, model_instance):
             if score == 2:
                 correct_answer_bool = False
             try:
-                my_db_of_qs = conn.connect(
+                my_db_of_qs, _ = su.connnecting(
                 host = my_host,
                 user = my_user,
                 passwd = pswd,
@@ -302,7 +302,7 @@ def eval_and_store_pro(d_of_qs_with_ans: dict, model_instance):
     elif lev == "workflow":
         # seg-expl: just store as it is without checking
         try:
-            my_db_of_wf = conn.connect(
+            my_db_of_wf, _ = su.connnecting(
             host = my_host,
             user = my_user,
             passwd = pswd,
@@ -436,7 +436,7 @@ Please format the response in markdown, with each (i repeat each) question start
     Query_workflow_Questions = "Select question, user_answer from workflow_questions where test_id = %s and topic_id = %s "
     # connecting to database
     
-    m_db = conn.connect(host = my_host, user = my_user, passwd = pswd, database = dbname)
+    m_db, _ = su.connnecting(host = my_host, user = my_user, passwd = pswd, database = dbname)
     cursor = m_db.cursor()
     cursor.execute("select topic_name, topic_description from topics where topic_id = %s", (topic_id,))
     topic_name = cursor.fetchone()
@@ -616,7 +616,7 @@ def callable_display_func(markdown_str, file_name, ts_dict):
     from math import ceil
     test_id = ts_dict["test_id"]
     topic_id = ts_dict["topic_id"]
-    db = conn.connect(
+    db, _ = su.connnecting(
         host = my_host,
         user = my_user,
         passwd = pswd,

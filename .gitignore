@@ -1,7 +1,6 @@
 hb.py
 a_test_page.py
 api_key.txt
-Sora.txt
 prompts.txt
 Architecture Consistancy.png
 Assets/*.json
@@ -13,3 +12,6 @@ utility_scripts/
 .vscode/
 # ignore pycache
 __pycache__/
+
+con_env
+consistancy_ver_2.code-workspace

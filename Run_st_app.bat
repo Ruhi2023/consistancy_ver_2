@@ -41,6 +41,9 @@ if not exist "%folder%\db_details.json" (
     echo onward to run streamlit app
 )
 
+REM Activating the env
+call con_env\Scripts\activate
+
 REM Run the Streamlit app
 python -m streamlit run navigation.py
 
