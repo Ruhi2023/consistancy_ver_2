@@ -1,24 +1,24 @@
 import streamlit as st
 import time
-import Consistancy_tables as su
+import Consistancy_tables_with_orm as su
 import re
 # Initialize session state variables
 
 
 
-
+st.session_state
 # Function to add project
 def add_project(name, topic, description):
     name = name.replace(" ", "_")
     topic = topic.replace(" ", "_")
     description = description.replace(" ", "_")
     project_topic = name + "_from_" + topic
-    db,cur = su.connnecting()
-    Query = "Insert into topics (topic_name,Topic_type, Topic_description) values (%s,%s, %s)"
+    db,cur = su.connecting_connector()
+    Query = "Insert into topics (topic_name,topic_type, topic_description, user_id) values (%s,%s, %s, %s) returning topic_id"
     type_2 = "projects"
-    cur.execute(Query, (project_topic, type_2, description))
+    cur.execute(Query, (project_topic, type_2, description, st.session_state.authenticated_user.user_id))
     db.commit()
-    current_topic_id = cur.lastrowid
+    current_topic_id = cur.fetchone()[0]
     st.success("Project added!")
     st.session_state.topic_id_project = current_topic_id
     time.sleep(2)
@@ -29,17 +29,17 @@ def add_project(name, topic, description):
 def add_study(topic):
     topic = topic.replace(" ", "_")
     # check if topic already exists
-    db,cur = su.connnecting()
+    db,cur = su.connecting_connector()
     cur.execute("Select count(topic_id) from topics where topic_name = %s", (topic,))
     if cur.fetchone()[0] > 0:
         st.error("Topic already exists!")
         return
     else:
-        Query = "Insert into topics (topic_name,Topic_type) values (%s,%s)"
+        Query = "Insert into topics (topic_name,topic_type, user_id) values (%s,%s, %s) returning topic_id"
         type_1 = "skills"
-        cur.execute(Query, (topic, type_1))
+        cur.execute(Query, (topic, type_1, st.session_state.authenticated_user.user_id))
         db.commit()
-        current_topic_id = cur.lastrowid
+        current_topic_id = cur.fetchone()[0]
         st.success("Study topic added!")
         st.session_state.topic_id_study = current_topic_id
     time.sleep(2)

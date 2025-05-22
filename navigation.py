@@ -8,7 +8,7 @@ def nav_generator():
 })
     elif "authenticated_user" not in st.session_state:
         nav = st.navigation({
-    "login": [st.Page("pages/login.py", title="Login", icon="🔑")],})
+    "login": [st.Page("pages/login.py", title="Login", icon="🔑"),st.Page("pages/register.py",title="Register", icon="#️⃣")],})
     return nav
 
 nav = nav_generator()

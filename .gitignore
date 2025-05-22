@@ -13,5 +13,8 @@ utility_scripts/
 # ignore pycache
 __pycache__/
 
+.venv
+
 con_env
 consistancy_ver_2.code-workspace
+

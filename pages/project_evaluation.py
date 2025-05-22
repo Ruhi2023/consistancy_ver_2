@@ -1,36 +1,28 @@
+import logging
+import traceback
 import google.generativeai as genai
 import streamlit as st
 import datetime as dt
 
 import os
-import Consistancy_tables as su
+import Consistancy_tables_with_orm as su
+import utilities as util
 from functools import partial
 
+st.write(st.session_state)
 # seg-expl initialization
 
-my_host,my_user,pswd,dbname = su.getconnnames()
-def get_mykey():
-    found = 0
-    dir_per =""
-    for dirpath, dirnames, filenames in os.walk(os.getcwd()):
-        if "api_key.txt" in filenames:
-            found = 1
-            dir_per = dirpath
-            break
-    if found == 1:
-        with open(os.path.join(dir_per, "api_key.txt")) as f:
-            api_k = f.readlines()
-        return api_k[0].replace("\n","")
-    else:
-        st.error("No api_key.txt found")
+try:
+    api_key_from_func = util.GoogleGenAIUtilities().api_key
+
+    if api_key_from_func is None:
+        st.error("No api_key.txt found in the current directory.\n Please make sure that api_key.txt is present in the current directory")
         st.stop()
-        return None
-api_key_from_func = get_mykey()
-if api_key_from_func is None:
-    st.error("No api_key.txt found in the current directory.\n Please make sure that api_key.txt is present in the current directory")
+    else:
+        genai.configure(api_key=api_key_from_func)
+except Exception as e:
+    st.error(e)
     st.stop()
-else:
-    genai.configure(api_key=api_key_from_func)
 # st.write(st.session_state)
 # generate Questions based on topic 
 # make a form to ask for these answers 
@@ -55,20 +47,20 @@ for key in st.session_state:
 # ? need to account for if it is testing understanding or workflow
 
 # * session_state details name will br p_test_details 
-# 1. create test for both understanding and workflow
-    # 1.1 UI create form to take in tests 
-    # 1.2 function to store test in database (here update st.session state_to generate Questions) return a dict to store in st.session_state.ptest_details
-    # 1.3 store dict on ptest_details
-# 2. generate and display questions for both understanding and workflow 
-    # 2.1 call the generate functions method, pass which prompts to be used,
-    # 2.2 store in database
-    # 2.3 format data as 2 dicts one for workflow Questions another for test_of_understanding_questions
-    # 2.4 make 2 colmns and side by side generate forms 
-    # 2.5 evalutae individul questions and workflow add to db
-# 3. evaluation of both understanding and workflow and results to their respective dbs 
-    # 3.1 generate results evaluation and score them
-    # 3.2 store in a markdown file
-# 4. generate and store overall result
+# w-flow 1. create test for both understanding and workflow
+# w-flow     1.1 UI create form to take in tests 
+# w-flow     1.2 function to store test in database (here update st.session state_to generate Questions) return a dict to store in st.session_state.ptest_details
+# w-flow     1.3 store dict on ptest_details
+# w-flow 2. generate and display questions for both understanding and workflow 
+# w-flow     2.1 call the generate functions method, pass which prompts to be used,
+# w-flow     2.2 store in database
+# w-flow     2.3 format data as 2 dicts one for workflow Questions another for test_of_understanding_questions
+# w-flow     2.4 make 2 colmns and side by side generate forms 
+# w-flow     2.5 evalutae individul questions and workflow add to db
+# w-flow 3. evaluation of both understanding and workflow and results to their respective dbs 
+# w-flow     3.1 generate results evaluation and score them
+# w-flow     3.2 store in a markdown file
+# w-flow 4. generate and store overall result
 
 
 
@@ -83,19 +75,15 @@ if "topic_id_project" not in st.session_state:
     # 1.2 function to store test in database (here update st.session state_to generate Questions) return a dict to store in st.session_state.ptest_details
 def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
     if (eno+mno+hno) <= 4:
-        st.warning("Please select atleast 5 questions from any difficulty level, you can aslo select all easy Questions to try out, there is no restriction on it.")
+        st.warning("Please select atleast 5 questions from any difficulty level \n\n you can aslo select all easy Questions to try out, there is no restriction on it.")
         return 0
     else:
-        the_db, _ = su.connnecting(
-            host = my_host,
-            user = my_user,
-            passwd = pswd,
-            database = dbname
-        )
-        the_cur = the_db.cursor()
-        the_cur.execute("insert into tests (topic_id,easy_Questions,medium_Questions,difficult_Questions) values (%s,%s,%s,%s)",(tp_id,eno,mno,hno))
-        test_id_val = the_cur.lastrowid
-        the_cur.execute("insert into my_progress (topic_id, test_id, workflow_qs) values (%s,%s,%s)",(tp_id,test_id_val,wrkflow_qs))
+
+        the_db ,the_cur = su.connecting_connector()
+        the_cur.execute("insert into tests (topic_id,easy_Questions,medium_Questions,difficult_Questions,user_id) values (%s,%s,%s,%s,%s) returning test_id",(tp_id,eno,mno,hno,st.session_state.authenticated_user.user_id))
+        test_id_val = the_cur.fetchone()[0]
+        the_cur.execute("insert into my_progress (topic_id, test_id, workflow_qs, user_id) values (%s,%s,%s,%s)",(tp_id,test_id_val,wrkflow_qs,st.session_state.authenticated_user.user_id))
+
         the_db.commit()
         the_cur.close()
         the_db.close()
@@ -105,14 +93,10 @@ def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
     # 1.1 UI create form to take in tests 
 # // with st.form("project evaluation form"):
 with st.form("project evaluation form generate test"):
-    the_db, _ = su.connnecting(
-        host = my_host,
-        user = my_user,
-        passwd = pswd,
-        database = dbname
-    )
-    the_cur = the_db.cursor()
-    the_cur.execute("select topic_id, topic_name , topic_description from topics where topic_type = 'projects' or topic_type = 'ideas_implementation' ")
+
+    the_db ,the_cur = su.connecting_connector()
+    the_cur.execute("select topic_id, topic_name , topic_description from topics where topic_type = 'projects' or topic_type = 'ideas_implementation'and user_id = %s ",(st.session_state.authenticated_user.user_id,))
+
     projects_names = the_cur.fetchall()
     the_cur.close()
     the_db.close()
@@ -135,17 +119,13 @@ with st.form("project evaluation form generate test"):
         st.session_state.gen_QS_wf_un = True
 
 def fetch_qs_already_in_db(test_id,topic_id,level):
-    my_db, _ = su.connnecting(
-        host = my_host,
-        user = my_user,
-        passwd = pswd,
-        database = dbname
-    )
-    my_cur = my_db.cursor()
+
+    my_db, my_cur = su.connecting_connector()
+
     if level == "workflow":
-        my_cur.execute("select Question from workflow_questions where test_id = %s and topic_id = %s", (test_id,topic_id))
+        my_cur.execute("select Question from workflow_questions where test_id = %s and topic_id = %s and user_id = %s", (test_id,topic_id,st.session_state.authenticated_user.user_id))
     else:
-        my_cur.execute("select Question from questions where test_id = %s and topic_id = %s and question_type = %s", (test_id,topic_id,level))
+        my_cur.execute("select Question from questions where test_id = %s and topic_id = %s and question_type = %s and user_id = %s", (test_id,topic_id,level,st.session_state.authenticated_user.user_id))
     questions = my_cur.fetchall()
     my_db.commit()
     my_cur.close()
@@ -192,18 +172,15 @@ Avoid Duplication with the already generated Questions: {QS_present}""".format(t
         myprompt = difficult_qs_prompt
     else:
         myprompt = wrkflow_qs_prompt
-    print(myprompt)
+    # print(myprompt)
     res = model_inst.generate_content(myprompt)
-    m_db, _ = su.connnecting(
-        host = my_host,
-        user = my_user, 
-        passwd = pswd,  
-        database = dbname)
-    m_cur = m_db.cursor()
+
+    m_db, m_cur = su.connecting_connector()
+
     if level == "easy"or level == "medium" or level == "difficult":
-        m_cur.execute("insert into questions (test_id, topic_id, question_type, question_no, question) values (%s, %s, %s, %s, %s)", (test_id, topic_id, level, question_no, res.text))
+        m_cur.execute("insert into questions (test_id, topic_id, question_type, question_no, question, user_id) values (%s, %s, %s, %s, %s, %s)", (test_id, topic_id, level, question_no, res.text, st.session_state.authenticated_user.user_id))
     elif level == "workflow":
-        m_cur.execute("insert into workflow_questions (test_id, topic_id, question_no, question) values (%s, %s, %s, %s)", (test_id, topic_id, question_no, res.text))
+        m_cur.execute("insert into workflow_questions (test_id, topic_id, question_no, question, user_id) values (%s, %s, %s, %s, %s)", (test_id, topic_id, question_no, res.text, st.session_state.authenticated_user.user_id))
     m_db.commit()
     m_cur.close()
     m_db.close()
@@ -225,15 +202,12 @@ def form_dict_for_front(ts_id,tp_id):
     """
     my_lis1 = []
     my_lis2 = []
-    my_db, _= su.connnecting(
-        host = my_host,
-        user = my_user, 
-        passwd = pswd,  
-        database = dbname)
-    my_cur = my_db.cursor()
-    my_cur.execute("Select Question_no, question from workflow_questions where test_id = %s and topic_id = %s", (ts_id,tp_id))
+
+    my_db, my_cur = su.connecting_connector()
+    my_cur.execute("Select Question_no, question from workflow_questions where test_id = %s and topic_id = %s and user_id = %s", (ts_id,tp_id,st.session_state.authenticated_user.user_id))
+
     my_l1 = my_cur.fetchall()
-    my_cur.execute("Select Question_no, question, question_type from questions where test_id = %s and topic_id = %s", (ts_id,tp_id))
+    my_cur.execute("Select Question_no, question, question_type from questions where test_id = %s and topic_id = %s and user_id = %s", (ts_id,tp_id,st.session_state.authenticated_user.user_id))
     my_l2 = my_cur.fetchall()
     my_db.commit()
     my_cur.close()
@@ -276,24 +250,22 @@ def eval_and_store_pro(d_of_qs_with_ans: dict, model_instance):
             if score == 2:
                 correct_answer_bool = False
             try:
-                my_db_of_qs, _ = su.connnecting(
-                host = my_host,
-                user = my_user,
-                passwd = pswd,
-                database = dbname)
-                my_cur_of_qs = my_db_of_qs.cursor()
-                my_cur_of_qs.execute("update questions set user_Answer = %s , correctness = %s where question_no = %s and topic_id = %s and test_id = %s",
+
+                my_db_of_qs,  my_cur_of_qs = su.connecting_connector()
+                my_cur_of_qs.execute("update questions set user_Answer = %s , correctness = %s where question_no = %s and topic_id = %s and test_id = %s and user_id = %s",
+
                                       (d_of_qs_with_ans["user_Answer"],
                                        correct_answer_bool, 
                                        d_of_qs_with_ans["Question_no"], 
                                        st.session_state.p_test_details["topic_id"], 
-                                       st.session_state.p_test_details["test_id"]))
+                                       st.session_state.p_test_details["test_id"],
+                                       st.session_state.authenticated_user.user_id))
                 
             except Exception as e:
-                print(d_of_qs_with_ans.keys())
-                st.error("Something went wrong while storing the question's answer in database")
-                print(dt.datetime.now())
-                print(e)
+                # print(d_of_qs_with_ans.keys())
+                st.error(f"Something went wrong while storing the question's answer in database \n\n {e}")
+                # print(dt.datetime.now())
+                # print(e)
             finally:
                 my_db_of_qs.commit()
                 my_cur_of_qs.close()
@@ -302,22 +274,19 @@ def eval_and_store_pro(d_of_qs_with_ans: dict, model_instance):
     elif lev == "workflow":
         # seg-expl: just store as it is without checking
         try:
-            my_db_of_wf, _ = su.connnecting(
-            host = my_host,
-            user = my_user,
-            passwd = pswd,
-            database = dbname)
-            my_cur_of_wf = my_db_of_wf.cursor()
-            my_cur_of_wf.execute("update workflow_questions set User_Answer = %s where Question_no = %s and topic_id = %s and test_id = %s", 
+
+            my_db_of_wf,my_cur_of_wf = su.connecting_connector()
+            my_cur_of_wf.execute("update workflow_questions set User_Answer = %s where Question_no = %s and topic_id = %s and test_id = %s and user_id = %s", 
                                 (d_of_qs_with_ans["user_Answer"], 
                                  d_of_qs_with_ans["Question_no"], 
                                  st.session_state.p_test_details["topic_id"], 
-                                 st.session_state.p_test_details["test_id"]))
+                                 st.session_state.p_test_details["test_id"],
+                                 st.session_state.authenticated_user.user_id))
         except Exception as e:
-            print(d_of_qs_with_ans.keys())
+            # print(d_of_qs_with_ans.keys())
             st.error("Something went wrong while storing workflow answer in database")
-            print(dt.datetime.now())
-            print(e)
+            # print(dt.datetime.now())
+            # print(e)
         finally:
             my_db_of_wf.commit()
             my_cur_of_wf.close()
@@ -376,13 +345,12 @@ if "p_test_details" in st.session_state:
     # ! error prone segment
     Qs_workflow, Qs_understanding = form_dict_for_front(ts_id=st.session_state.p_test_details["test_id"], tp_id=st.session_state.p_test_details["topic_id"])
     if "p_disp_Qs" in st.session_state:
-        col1,col2 = st.columns(2)
-        with col1:
-            st.header("Questions to test workflow")
+
+            st.header(":blue[Workflow Questions]:Questions to test workflow", )
             for i in range(len(Qs_workflow)):
                 display_qs_forms(Qs_workflow[i])
-        with col2:
-            st.header("Questions to test understanding")
+
+            st.header(":blue[Understanding Questions]:Questions to test understanding")
             for i in range(len(Qs_understanding)):
                 display_qs_forms(Qs_understanding[i])
 
@@ -430,27 +398,29 @@ Please provide for each (i repeat each) question:
 4. Any other comments
 Please format the response in markdown, with each (i repeat each) question starting with a level 3 heading. Here are the questions:"""
     # * queries
-    Query_wrong_Questions = "Select question, user_answer from questions where test_id = %s and topic_id = %s and correctness = False "
-    Query_correct_Questions = "Select question, user_answer from questions where test_id = %s and topic_id = %s and correctness = True "
-    Query_not_attempted_Questions = "Select question, user_answer from questions where test_id = %s and topic_id = %s and correctness is null "
-    Query_workflow_Questions = "Select question, user_answer from workflow_questions where test_id = %s and topic_id = %s "
+    Query_wrong_Questions = "Select question, user_answer from questions where test_id = %s and topic_id = %s and correctness = False and user_id = %s"
+    Query_correct_Questions = "Select question, user_answer from questions where test_id = %s and topic_id = %s and correctness = True and user_id = %s"
+    Query_not_attempted_Questions = "Select question, user_answer from questions where test_id = %s and topic_id = %s and correctness is null and user_id = %s"
+    Query_workflow_Questions = "Select question, user_answer from workflow_questions where test_id = %s and topic_id = %s and user_id = %s"
     # connecting to database
     
-    m_db, _ = su.connnecting(host = my_host, user = my_user, passwd = pswd, database = dbname)
-    cursor = m_db.cursor()
-    cursor.execute("select topic_name, topic_description from topics where topic_id = %s", (topic_id,))
+
+    m_db, cursor = su.connecting_connector()
+    cursor.execute("select topic_name, topic_description from topics where topic_id = %s and user_id = %s", (topic_id,st.session_state.authenticated_user.user_id))
+
     topic_name = cursor.fetchone()
-    cursor.execute(Query_wrong_Questions, (test_id, topic_id))
+    cursor.execute(Query_wrong_Questions, (test_id, topic_id,st.session_state.authenticated_user.user_id))
     wrong_qs = cursor.fetchall()
-    cursor.execute(Query_correct_Questions, (test_id, topic_id))
+    cursor.execute(Query_correct_Questions, (test_id, topic_id, st.session_state.authenticated_user.user_id))
     correct_qs = cursor.fetchall()
-    cursor.execute(Query_not_attempted_Questions, (test_id, topic_id))
+    cursor.execute(Query_not_attempted_Questions, (test_id, topic_id, st.session_state.authenticated_user.user_id))
     not_attempted_qs = cursor.fetchall()
-    cursor.execute(Query_workflow_Questions, (test_id, topic_id))
+    # print(not_attempted_qs)
+    cursor.execute(Query_workflow_Questions, (test_id, topic_id, st.session_state.authenticated_user.user_id))
     workflow_qs = cursor.fetchall()
-    cursor.execute("select easy_Questions,medium_Questions,difficult_Questions from Tests where test_id = %s and topic_id = %s", (test_id,topic_id))
+    cursor.execute("select easy_Questions,medium_Questions,difficult_Questions from Tests where test_id = %s and topic_id = %s and user_id = %s", (test_id,topic_id,st.session_state.authenticated_user.user_id))
     qs_num = cursor.fetchone()
-    cursor.execute("select question_type,count(*) from questions where Test_id = %s and topic_id = %s and correctness = True group by question_type", (test_id,topic_id))
+    cursor.execute("select question_type,count(*) from questions where Test_id = %s and topic_id = %s and correctness = True and user_id = %s group by question_type", (test_id,topic_id, st.session_state.authenticated_user.user_id))
     corr_qs_by_type = cursor.fetchall()
     cursor.close()
     m_db.close()
@@ -462,8 +432,9 @@ Please format the response in markdown, with each (i repeat each) question start
         "Workflow Questions": ""
     }
     if len(wrong_qs) > 0:
+        logging.info(f"wrong_qs = {wrong_qs}")
         for i in range(len(wrong_qs)):
-            wrong_qs[i] ="\n\n\n\nTHE_QUESTION: "  + wrong_qs[i][0] + "\nMY_ANSWER: " + wrong_qs[i][1]
+            wrong_qs[i] ="\n\n\n\nTHE_QUESTION: "  + str(wrong_qs[i][0]) + "\nMY_ANSWER: " + str(wrong_qs[i][1])
         if int(len(wrong_qs)/5)>0:
             # split it into list 
             wrong_ans_li = [wrong_qs[i:i+5] for i in range(0, len(wrong_qs), 5)]
@@ -479,7 +450,7 @@ Please format the response in markdown, with each (i repeat each) question start
 
     if len(correct_qs) > 0:
         for i in range(len(correct_qs)):
-            correct_qs[i] ="\n\n\n\nTHE_QUESTION: "  + correct_qs[i][0] + "\nMY_ANSWER: " + correct_qs[i][1]
+            correct_qs[i] ="\n\n\n\nTHE_QUESTION: "  + str(correct_qs[i][0]) + "\nMY_ANSWER: " + str(correct_qs[i][1])
         if int(len(correct_qs)/5)>0:
             # split it into list
             correct_ans_li = [correct_qs[i:i+5] for i in range(0, len(correct_qs), 5)]
@@ -495,7 +466,8 @@ Please format the response in markdown, with each (i repeat each) question start
 
     if len(not_attempted_qs) > 0:
         for i in range(len(not_attempted_qs)):
-            not_attempted_qs[i] ="\n\n\n\nTHE_QUESTION: "  + not_attempted_qs[i][0] + "\nMY_ANSWER: " + not_attempted_qs[i][1]
+            print(not_attempted_qs[i])
+            not_attempted_qs[i] ="\n\n\n\nTHE_QUESTION: "  + str(not_attempted_qs[i][0]) + "\nMY_ANSWER: " + str(not_attempted_qs[i][1])
         if int(len(not_attempted_qs)/5)>0:
             # split it into list    
             not_attempted_ans_li = [not_attempted_qs[i:i+5] for i in range(0, len(not_attempted_qs), 5)]
@@ -511,7 +483,7 @@ Please format the response in markdown, with each (i repeat each) question start
 
     if len(workflow_qs) > 0:
         for i in range(len(workflow_qs)):
-            workflow_qs[i] ="\n\n\n\nTHE_QUESTION: "  + workflow_qs[i][0] + "\nMY_ANSWER: " + workflow_qs[i][1]
+            workflow_qs[i] ="\n\n\n\nTHE_QUESTION: "  + str(workflow_qs[i][0]) + "\nMY_ANSWER: " + str(workflow_qs[i][1])
         if int(len(workflow_qs)/5)>0:
             # split it into list
             workflow_ans_li = [workflow_qs[i:i+5] for i in range(0, len(workflow_qs), 5)]
@@ -616,14 +588,10 @@ def callable_display_func(markdown_str, file_name, ts_dict):
     from math import ceil
     test_id = ts_dict["test_id"]
     topic_id = ts_dict["topic_id"]
-    db, _ = su.connnecting(
-        host = my_host,
-        user = my_user,
-        passwd = pswd,
-        database = dbname
-    )
-    cur = db.cursor()
-    cur.execute("UPDATE tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s", (ceil(ts_dict["score"]), markdown_str, test_id, topic_id))
+
+    db ,cur = su.connecting_connector()
+    cur.execute("UPDATE tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s and user_id = %s", (ceil(ts_dict["score"]), markdown_str, test_id, topic_id, st.session_state.authenticated_user.user_id))
+
     db.commit()
     cur.close()
     db.close()
@@ -634,8 +602,12 @@ def callable_display_func(markdown_str, file_name, ts_dict):
         del st.session_state.p_test_details
 
 if "p_test_details" in st.session_state:
-    eval_btn = st.button("Evaluate the Activity")
-    if eval_btn:
-        eval_res_dict = format_qs_and_workflow_ans(topic_id=st.session_state.p_test_details["topic_id"], test_id=st.session_state.p_test_details["test_id"])
-        res_md, res_md_name, ts_det_dict = generate_mds_and_md_file_partial(eval_res_dict)
-        callable_display_func(res_md, res_md_name, ts_det_dict)
+    try:
+        eval_btn = st.button("Evaluate the Activity")
+        if eval_btn:
+            eval_res_dict = format_qs_and_workflow_ans(topic_id=st.session_state.p_test_details["topic_id"], test_id=st.session_state.p_test_details["test_id"])
+            res_md, res_md_name, ts_det_dict = generate_mds_and_md_file_partial(eval_res_dict)
+            callable_display_func(res_md, res_md_name, ts_det_dict)
+    except Exception as e:
+        st.error(f"An exception occured: {e}")
+        st.error(traceback.print_exc())
