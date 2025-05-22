@@ -3,7 +3,7 @@ import traceback
 import google.generativeai as genai
 import streamlit as st
 import datetime as dt
-import mysql.connector as conn
+
 import os
 import Consistancy_tables_with_orm as su
 import utilities as util
@@ -78,10 +78,12 @@ def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
         st.warning("Please select atleast 5 questions from any difficulty level \n\n you can aslo select all easy Questions to try out, there is no restriction on it.")
         return 0
     else:
+
         the_db ,the_cur = su.connecting_connector()
         the_cur.execute("insert into tests (topic_id,easy_Questions,medium_Questions,difficult_Questions,user_id) values (%s,%s,%s,%s,%s) returning test_id",(tp_id,eno,mno,hno,st.session_state.authenticated_user.user_id))
         test_id_val = the_cur.fetchone()[0]
         the_cur.execute("insert into my_progress (topic_id, test_id, workflow_qs, user_id) values (%s,%s,%s,%s)",(tp_id,test_id_val,wrkflow_qs,st.session_state.authenticated_user.user_id))
+
         the_db.commit()
         the_cur.close()
         the_db.close()
@@ -91,8 +93,10 @@ def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
     # 1.1 UI create form to take in tests 
 # // with st.form("project evaluation form"):
 with st.form("project evaluation form generate test"):
+
     the_db ,the_cur = su.connecting_connector()
     the_cur.execute("select topic_id, topic_name , topic_description from topics where topic_type = 'projects' or topic_type = 'ideas_implementation'and user_id = %s ",(st.session_state.authenticated_user.user_id,))
+
     projects_names = the_cur.fetchall()
     the_cur.close()
     the_db.close()
@@ -115,7 +119,9 @@ with st.form("project evaluation form generate test"):
         st.session_state.gen_QS_wf_un = True
 
 def fetch_qs_already_in_db(test_id,topic_id,level):
+
     my_db, my_cur = su.connecting_connector()
+
     if level == "workflow":
         my_cur.execute("select Question from workflow_questions where test_id = %s and topic_id = %s and user_id = %s", (test_id,topic_id,st.session_state.authenticated_user.user_id))
     else:
@@ -168,7 +174,9 @@ Avoid Duplication with the already generated Questions: {QS_present}""".format(t
         myprompt = wrkflow_qs_prompt
     # print(myprompt)
     res = model_inst.generate_content(myprompt)
+
     m_db, m_cur = su.connecting_connector()
+
     if level == "easy"or level == "medium" or level == "difficult":
         m_cur.execute("insert into questions (test_id, topic_id, question_type, question_no, question, user_id) values (%s, %s, %s, %s, %s, %s)", (test_id, topic_id, level, question_no, res.text, st.session_state.authenticated_user.user_id))
     elif level == "workflow":
@@ -194,8 +202,10 @@ def form_dict_for_front(ts_id,tp_id):
     """
     my_lis1 = []
     my_lis2 = []
+
     my_db, my_cur = su.connecting_connector()
     my_cur.execute("Select Question_no, question from workflow_questions where test_id = %s and topic_id = %s and user_id = %s", (ts_id,tp_id,st.session_state.authenticated_user.user_id))
+
     my_l1 = my_cur.fetchall()
     my_cur.execute("Select Question_no, question, question_type from questions where test_id = %s and topic_id = %s and user_id = %s", (ts_id,tp_id,st.session_state.authenticated_user.user_id))
     my_l2 = my_cur.fetchall()
@@ -240,8 +250,10 @@ def eval_and_store_pro(d_of_qs_with_ans: dict, model_instance):
             if score == 2:
                 correct_answer_bool = False
             try:
+
                 my_db_of_qs,  my_cur_of_qs = su.connecting_connector()
                 my_cur_of_qs.execute("update questions set user_Answer = %s , correctness = %s where question_no = %s and topic_id = %s and test_id = %s and user_id = %s",
+
                                       (d_of_qs_with_ans["user_Answer"],
                                        correct_answer_bool, 
                                        d_of_qs_with_ans["Question_no"], 
@@ -262,6 +274,7 @@ def eval_and_store_pro(d_of_qs_with_ans: dict, model_instance):
     elif lev == "workflow":
         # seg-expl: just store as it is without checking
         try:
+
             my_db_of_wf,my_cur_of_wf = su.connecting_connector()
             my_cur_of_wf.execute("update workflow_questions set User_Answer = %s where Question_no = %s and topic_id = %s and test_id = %s and user_id = %s", 
                                 (d_of_qs_with_ans["user_Answer"], 
@@ -391,8 +404,10 @@ Please format the response in markdown, with each (i repeat each) question start
     Query_workflow_Questions = "Select question, user_answer from workflow_questions where test_id = %s and topic_id = %s and user_id = %s"
     # connecting to database
     
+
     m_db, cursor = su.connecting_connector()
     cursor.execute("select topic_name, topic_description from topics where topic_id = %s and user_id = %s", (topic_id,st.session_state.authenticated_user.user_id))
+
     topic_name = cursor.fetchone()
     cursor.execute(Query_wrong_Questions, (test_id, topic_id,st.session_state.authenticated_user.user_id))
     wrong_qs = cursor.fetchall()
@@ -573,8 +588,10 @@ def callable_display_func(markdown_str, file_name, ts_dict):
     from math import ceil
     test_id = ts_dict["test_id"]
     topic_id = ts_dict["topic_id"]
+
     db ,cur = su.connecting_connector()
     cur.execute("UPDATE tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s and user_id = %s", (ceil(ts_dict["score"]), markdown_str, test_id, topic_id, st.session_state.authenticated_user.user_id))
+
     db.commit()
     cur.close()
     db.close()

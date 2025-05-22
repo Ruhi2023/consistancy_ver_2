@@ -2,7 +2,7 @@ import streamlit as st
 import datetime as dt 
 import Consistancy_tables_with_orm as su 
 import time
-import mysql.connector as conn
+
 
 my_host, my_user, my_passwd, dbname = su.getconnnames()
 
@@ -31,8 +31,9 @@ def display_tree_structure():
 
     # Fetch status counts from the database
     status_counts = fetch_status_counts()
+
     
-    # Display the tree structure using indents to simulate a hierarchy
+        # Display the tree structure using indents to simulate a hierarchy
     st.write("📁 Ideas")
     
     # First level: All ideas
@@ -44,7 +45,8 @@ def display_tree_structure():
         icon = "📌"  # Customize icon per status if you want
         st.write(f"    ├── {icon} {status.capitalize()}: {count} ideas")
     
-    st.write("    └── End of status tree")
+    st.write("    └── End")
+    
 
 
 def manage_callback(upd,heading, disc, implementable,status, category, id_of_idea):
@@ -94,9 +96,12 @@ with col2:
             My_db, My_cur = su.connecting_connector()
             My_cur.execute("SELECT * FROM ideas where user_id = %s", (st.session_state.authenticated_user.user_id,))
             ideas = My_cur.fetchall()
-            idea_name = st.selectbox("Select an idea", ideas)
-            st.write(f"you selected {idea_name}, It has id of {idea_name[0]}")
-            id_idea = idea_name[0]
+            if len(ideas)>0:
+                idea_name = st.selectbox("Select an idea", ideas)
+                st.write(f"you selected {idea_name}, It has id of {idea_name[0]}")
+                id_idea = idea_name[0]
+            else:
+                st.error("You need to insert an idea first")
             # input the value for components
         elif update_existing == "No":
             st.write("Create new idea")

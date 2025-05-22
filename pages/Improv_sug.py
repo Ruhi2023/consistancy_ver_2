@@ -2,9 +2,11 @@
 import streamlit as st 
 import os
 import google.generativeai as genai
+
 import Consistancy_tables_with_orm as su
 from utilities import GoogleGenAIUtilities as gg
 import mysql.connector as conn
+
 import pandas as pd
 import datetime as dt
 
@@ -75,6 +77,7 @@ def Get_next_steps():
 
 def Give_data():
     """Baiscally it will help me get the suggestions via tests table"""
+
     try:
         twenty_days_ago = dt.date.today() - dt.timedelta(days=20)
         My_db, My_cur = su.connecting_connector()
@@ -87,6 +90,7 @@ def Give_data():
     finally:
         My_cur.close()
         My_db.close()
+
     prompt_next_steps = f"""These suggestions were Given to me for some tests i took not necessarly on the same topic.
       Analyse this data and convert it into some actionable steps that i can take to improve. 
       {prog}"""
@@ -115,6 +119,7 @@ def get_ideas():
     finally:
         cur.close()
         db.close()
+
     prompt_My_progress_suggestions = f"""I have done some tests on topics and i have got some suggestions for the same. Analyse this data and convert it into some actionable steps. Guide me in the right direction for what i am doing. {tp_i_did}"""
     generation_config = {
         "temperature": 0.9,
@@ -151,7 +156,9 @@ if idea_but:
 # // import matplotlib.pyplot as plt
 
 # seg-expl: get topics for analysis
+
 my_db, my_cur = su.connecting_connector()
+
 # seg-expl taking all tables for analysis
 
 my_cur.execute("select * from topics where user_id = %s", (st.session_state.authenticated_user.user_id,))
