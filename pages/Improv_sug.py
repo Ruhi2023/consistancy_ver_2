@@ -2,9 +2,11 @@
 import streamlit as st 
 import os
 import google.generativeai as genai
-import Consistancy_tables as su
+import Consistancy_tables_with_orm as su
+from utilities import GoogleGenAIUtilities as gg
 import mysql.connector as conn
 import pandas as pd
+import datetime as dt
 
 # def get_mykey():
 #     found = 0
@@ -22,14 +24,14 @@ import pandas as pd
 #         st.error("No api_key.txt found")
 #         st.stop()
 #         return None
-
-api_key_from_func = su.get_mykey()
+g_creds = gg()
+api_key_from_func = g_creds.api_key
 if api_key_from_func is None:
-    st.error("No api_key.txt found in the current directory.\n Please make sure that api_key.txt is present in the current directory")
+    st.error("No api_key.txt found in the current directory.\n Please make sure that api_key.txt is present in the current directory (project root )")
     st.stop()
 else:
     genai.configure(api_key=api_key_from_func)
-my_host, my_user, my_password, my_db_name = su.getconnnames()
+# my_host, my_user, my_password, my_db_name = su.getconnnames()
 # #fetch the data and then ask for suggestions
 # # 1 fetch the data
 # My_db, My_cur = su.connnecting()
@@ -41,12 +43,26 @@ my_host, my_user, my_password, my_db_name = su.getconnnames()
 
 def Get_next_steps():
     """Baiscally it will help me get the suggestions via chat imporvements"""
-    m_db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
-    m_cur = m_db.cursor()
-    # getting struggles
-    m_cur.execute("SELECT * FROM struggles where The_date >= date_sub(curdate(),interval 20 day)")
-    data = m_cur.fetchall()
-    prompt_next_steps = f"""These are some struggles that i had during the past 20 days. Analyse this data and convert it into some actionable steps that i can take to improve. {data}"""
+    try:
+        m_db, m_cur = su.connecting_connector()
+        # getting struggles
+        twenty_days_ago = dt.date.today() - dt.timedelta(days=20)
+        m_cur.execute("""
+        SELECT * FROM struggles
+        WHERE The_date >= %s and user_id = %s
+    """, (twenty_days_ago,st.session_state.authenticated_user.user_id))
+        data = m_cur.fetchall()
+    except Exception as e:
+        st.error(f"Query not executed {e}")
+        data = "Sorry no data found, provide general suggestions"
+        st.stop()
+    finally:
+        m_cur.close()
+        m_db.close()
+
+    prompt_next_steps = f"""These are some struggles that i had during the past 20 days. 
+    Analyse this data and convert it into some actionable steps that i can take to improve. 
+    {data}"""
     gen_conf = {
         "temperature": 0.9,
         "top_p": 0.95,
@@ -59,12 +75,21 @@ def Get_next_steps():
 
 def Give_data():
     """Baiscally it will help me get the suggestions via tests table"""
-    My_db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
-    My_cur = My_db.cursor()
-    My_cur.execute("SELECT suggestions FROM tests where test_date >= date_sub(curdate(),interval 20 day)")
-    prog = My_cur.fetchall()
+    try:
+        twenty_days_ago = dt.date.today() - dt.timedelta(days=20)
+        My_db, My_cur = su.connecting_connector()
+        My_cur.execute("SELECT suggestions FROM tests where test_date >= The_date >= %s and user_id = %s", (twenty_days_ago,st.session_state.authenticated_user.user_id))
+        prog = My_cur.fetchall()
+    except Exception as e:
+        st.error(f"Query not executed {e}")
+        prog = "Sorry no data found, provide general suggestions"
+        st.stop()
+    finally:
+        My_cur.close()
+        My_db.close()
     prompt_next_steps = f"""These suggestions were Given to me for some tests i took not necessarly on the same topic.
-      Analyse this data and convert it into some actionable steps that i can take to improve. {prog}"""
+      Analyse this data and convert it into some actionable steps that i can take to improve. 
+      {prog}"""
     generation_config = {
         "temperature": 0.9,
         "top_p": 0.95,
@@ -78,11 +103,18 @@ def Give_data():
 def get_ideas():
     """Gets data from tests table test id test_date, 
     gets topic_id, topic_name form topics table"""
-    db = conn.connect(host = my_host, user = my_user, passwd = my_password, database = my_db_name)
-    cur = db.cursor()
-    Query_topics_i_did = "select topics.topic_id, topics.topic_name, topics.topic_description, avg(tests.score), group_concat(tests.suggestions,' \n\n\n\n ') as suggestions from tests left join topics on tests.topic_id = topics. topic_id group by topic_id"
-    cur.execute(Query_topics_i_did)
-    tp_i_did = cur.fetchall()
+    try:
+        db, cur = su.connecting_connector()
+        Query_topics_i_did = "select topics.topic_id, topics.topic_name, topics.topic_description, avg(tests.score), group_concat(tests.suggestions,' \n\n\n\n ') as suggestions from tests left join topics on tests.topic_id = topics. topic_id group by topic_id where user_id = %s"
+        cur.execute(Query_topics_i_did, (st.session_state.authenticated_user.user_id,))
+        tp_i_did = cur.fetchall()
+    except Exception as e:
+        st.error(f"Query not executed {e}")
+        tp_i_did = "Sorry no data found, provide general suggestions"
+        st.stop()
+    finally:
+        cur.close()
+        db.close()
     prompt_My_progress_suggestions = f"""I have done some tests on topics and i have got some suggestions for the same. Analyse this data and convert it into some actionable steps. Guide me in the right direction for what i am doing. {tp_i_did}"""
     generation_config = {
         "temperature": 0.9,
@@ -119,29 +151,51 @@ if idea_but:
 # // import matplotlib.pyplot as plt
 
 # seg-expl: get topics for analysis
-my_db = conn.connect(
-    host=my_host,
-    user=my_user,
-    password=my_password,
-    database=my_db_name
-)
+my_db, my_cur = su.connecting_connector()
 # seg-expl taking all tables for analysis
-my_cur = my_db.cursor()
-my_cur.execute("select * from topics")
+
+my_cur.execute("select * from topics where user_id = %s", (st.session_state.authenticated_user.user_id,))
 topics_table = my_cur.fetchall()
-my_cur.execute("show columns from topics")
+# my_cur.execute("show columns from topics where user_id = %", (st.session_state.authenticated_user.user_id,))
+my_cur.execute("""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'topics'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position;
+""")
 topics_columns = my_cur.fetchall()
-my_cur.execute("select * from questions")
+my_cur.execute("select * from questions where user_id = %s", (st.session_state.authenticated_user.user_id,))
 Questions_table = my_cur.fetchall()
-my_cur.execute("show columns from questions")
+my_cur.execute("""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'questions'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position;
+""")
 Questions_columns = my_cur.fetchall()
-my_cur.execute("select * from my_progress")
+my_cur.execute("select * from my_progress where user_id = %s", (st.session_state.authenticated_user.user_id,))
 my_progress_table = my_cur.fetchall()
-my_cur.execute("show columns from my_progress")
+# my_cur.execute("show columns from my_progress")
+my_cur.execute("""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'my_progress'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position;
+""")
 my_progress_columns = my_cur.fetchall()
-my_cur.execute("Select * from tests")
+my_cur.execute("Select * from tests where user_id = %s", (st.session_state.authenticated_user.user_id,))
 tests_table = my_cur.fetchall()
-my_cur.execute("show columns from tests")
+# my_cur.execute("show columns from tests")
+my_cur.execute("""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'tests'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position;
+""")
 tests_columns = my_cur.fetchall()
 my_db.commit()
 my_cur.close()
@@ -190,7 +244,7 @@ st.bar_chart(cat_counts, use_container_width=True,x_label="Date", y_label="Numbe
 # w-flow create test_id specific easy medium and difficult Questions
 cat_counts_tst = test_df.drop(["test_date", "topic_id", "score", "suggestions"], axis=1)
 st.markdown("### Number of Questions in each test")
-st.bar_chart(cat_counts_tst, x="test_id", y=["easy_Questions", "medium_Questions", "difficult_Questions"], use_container_width=True, x_label="Test ID", y_label="Number of Questions",color=["#FF0000", "#0000FF", "#00FF00"])
+st.bar_chart(cat_counts_tst, x="test_id", y=["easy_questions", "medium_questions", "difficult_questions"], use_container_width=True, x_label="Test ID", y_label="Number of Questions",color=["#FF0000", "#0000FF", "#00FF00"])
 # w-flow test_id by test score line chart
 test_id_by_test_score_df = test_df[["test_id", "score"]]
 st.markdown("### Number of Tests Taken by score")

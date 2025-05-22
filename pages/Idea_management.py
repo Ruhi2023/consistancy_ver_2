@@ -1,21 +1,21 @@
 import streamlit as st 
 import datetime as dt 
-import Consistancy_tables as su 
+import Consistancy_tables_with_orm as su 
 import time
 import mysql.connector as conn
 
 my_host, my_user, my_passwd, dbname = su.getconnnames()
 
 def fetch_status_counts():
-    the_db, cursor = su.connnecting()
+    the_db, cursor = su.connecting_connector()
     
     query = """
     SELECT Status, COUNT(*) as count
     FROM ideas
-    GROUP BY Status
+    GROUP BY Status where user_id
     """
     
-    cursor.execute(query)
+    cursor.execute(query, (st.session_state.authenticated_user.user_id,))
     results = cursor.fetchall()
     
     cursor.close()
@@ -48,13 +48,12 @@ def display_tree_structure():
 
 
 def manage_callback(upd,heading, disc, implementable,status, category, id_of_idea):
-    My_db = conn.connect(host = my_host, user = my_user, passwd = my_passwd, database = dbname)
-    My_cur = My_db.cursor()
+    My_db, My_cur = su.connecting_connector()
     if upd == "Yes":
         print("updating")
         if id_of_idea is not None:
-            upd_query = "update ideas set Category = %s, Idea_heading = %s, Idea_description = %s, Implementable = %s, Status = %s where The_date = %s"
-            tup = (str(category),str(heading), str(disc), implementable, str(status), dt.datetime.strftime(id_of_idea, format="%Y-%m-%d %H:%M:%S"))
+            upd_query = "update ideas set Category = %s, Idea_heading = %s, Idea_description = %s, Implementable = %s, Status = %s where The_date = %s, user_id = %s"
+            tup = (str(category),str(heading), str(disc), implementable, str(status), dt.datetime.strftime(id_of_idea, format="%Y-%m-%d %H:%M:%S"), st.session_state.authenticated_user.user_id)
             try:
                 My_cur.execute(upd_query, tup)
                 My_db.commit()
@@ -63,18 +62,20 @@ def manage_callback(upd,heading, disc, implementable,status, category, id_of_ide
             except Exception as e:
                 st.error(f"Query not executed {upd_query}, beacuse {e}")
             finally:
+                My_cur.close()
                 My_db.close()
     elif upd == "No":
         print("creating")
         time.sleep(1)
-        insert_query = "insert into ideas (Idea_heading, Idea_description, Category, Implementable, Status) values (%s, %s, %s, %s, %s)"
+        insert_query = "insert into ideas (Idea_heading, Idea_description, Category, Implementable, Status,user_id) values (%s, %s, %s, %s, %s, %s)"
         try:
-            My_cur.execute(insert_query, (str(heading), str(disc), str(category), implementable, str(status)))
+            My_cur.execute(insert_query, (str(heading), str(disc), str(category), implementable, str(status), st.session_state.authenticated_user.user_id))
             My_db.commit()
             st.success(f"Query executed {insert_query}", icon="✅")
         except Exception as e:
             st.error(f"Query not executed {insert_query}, beacuse {e}")
         finally:
+            My_cur.close()
             My_db.close()
 
 st.title("Idea Status Overview")
@@ -90,8 +91,8 @@ with col2:
         update_existing = form_selector
         if update_existing == "Yes":
             st.write("Update an existing idea")
-            My_db, My_cur = su.connnecting()
-            My_cur.execute("SELECT * FROM ideas")
+            My_db, My_cur = su.connecting_connector()
+            My_cur.execute("SELECT * FROM ideas where user_id = %s", (st.session_state.authenticated_user.user_id,))
             ideas = My_cur.fetchall()
             idea_name = st.selectbox("Select an idea", ideas)
             st.write(f"you selected {idea_name}, It has id of {idea_name[0]}")

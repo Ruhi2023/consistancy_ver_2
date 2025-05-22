@@ -3,27 +3,33 @@ import mysql.connector as conn
 import pandas as pd 
 import datetime as dt
 import matplotlib.pyplot as plt
-import Consistancy_tables as su
-my_host, my_user, my_passwd, dbname = su.getconnnames()
+import Consistancy_tables_with_orm as su
+# my_host, my_user, my_passwd, dbname = su.getconnnames()
 
-db = conn.connect(
-    host = my_host,
-    user = my_user,
-    passwd = my_passwd,
-    database = dbname
-)
-cur = db.cursor()
-cur.execute("select * from tests")
+db,cur = su.connecting_connector()
+cur.execute("select * from tests where user_id = %s", (st.session_state.authenticated_user.user_id,))
 tests_dat = cur.fetchall()
-cur.execute("show columns from tests")
+cur.execute("""SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'tests'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position""")
 tests_col = cur.fetchall()
-cur.execute("select * from topics")
+cur.execute("select * from topics where user_id = %s", (st.session_state.authenticated_user.user_id,))
 topics_dat = cur.fetchall()
-cur.execute("show columns from topics")
+cur.execute("""SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'topics'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position""")
 topics_col = cur.fetchall()
-cur.execute("select * from questions")
+cur.execute("select * from questions where user_id = %s", (st.session_state.authenticated_user.user_id,))
 qs_dat = cur.fetchall()
-cur.execute("show columns from questions")
+cur.execute("""SELECT column_name
+    FROM information_schema.columns
+    WHERE table_name = 'questions'
+      AND table_schema = 'public'
+    ORDER BY ordinal_position""")
 qs_col = cur.fetchall()
 cur.close()
 db.close()
@@ -35,9 +41,9 @@ def create_df(dat, col):
 tests_df = create_df(tests_dat, tests_col)
 topics_df = create_df(topics_dat, topics_col)
 qs_df = create_df(qs_dat, qs_col)
-
 # w-flow: score user for consistancy
 sorted_test_df = tests_df.sort_values(by=["test_date"])
+# st.write(sorted_test_df)
 sorted_test_df["test_date"] = sorted_test_df["test_date"].dt.date
 sco_date_wise= sorted_test_df.groupby(["test_date"],as_index=False)["score"].sum()
 start_date = sorted_test_df["test_date"].min()
@@ -90,23 +96,23 @@ ax[0,0].set_ylabel("Number of tests")
 ax[0,0].set_xlabel("Date")
 for i, label in enumerate(test_per_week["test_id"]):
     ax[0,0].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["test_id"][i]))
-ax[0,1].step(test_per_week["test_date"], test_per_week["easy_Questions"])
+ax[0,1].step(test_per_week["test_date"], test_per_week["easy_questions"])
 ax[0,1].set_ylabel("Number of easy questions")
 ax[0,1].set_xlabel("Date")
-for i, label in enumerate(test_per_week["easy_Questions"]):
-    ax[0,1].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["easy_Questions"][i]))
-ax[1,0].step(test_per_week["test_date"], test_per_week["medium_Questions"])
+for i, label in enumerate(test_per_week["easy_questions"]):
+    ax[0,1].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["easy_questions"][i]))
+ax[1,0].step(test_per_week["test_date"], test_per_week["medium_questions"])
 ax[1,0].set_ylabel("Number of medium questions")
 ax[1,0].set_xlabel("Date")
 for tik in ax[1,0].get_xticklabels():
     tik.set_rotation(45)
-for i, label in enumerate(test_per_week["medium_Questions"]):
-    ax[1,0].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["medium_Questions"][i]))
-ax[1,1].step(test_per_week["test_date"], test_per_week["difficult_Questions"])
+for i, label in enumerate(test_per_week["medium_questions"]):
+    ax[1,0].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["medium_questions"][i]))
+ax[1,1].step(test_per_week["test_date"], test_per_week["difficult_questions"])
 ax[1,1].set_ylabel("Number of difficult questions")
 ax[1,1].set_xlabel("Date")
-for i, label in enumerate(test_per_week["difficult_Questions"]):
-    ax[1,1].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["difficult_Questions"][i]))
+for i, label in enumerate(test_per_week["difficult_questions"]):
+    ax[1,1].annotate(str(label), (test_per_week["test_date"][i]+pd.Timedelta(hours=3), test_per_week["difficult_questions"][i]))
 for tik in ax[1,1].get_xticklabels():
     tik.set_rotation(45)
 fig.align_xlabels()

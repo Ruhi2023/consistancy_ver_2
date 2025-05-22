@@ -13,3 +13,4 @@ utility_scripts/
 .vscode/
 # ignore pycache
 __pycache__/
+.venv

@@ -1,25 +1,13 @@
 import streamlit as st 
 import google.generativeai as gai 
-import Consistancy_tables as su
+import Consistancy_tables_with_orm as su
+import utilities as util
 import os
 import time
-def get_mykey():
-    found = 0
-    dir_per =""
-    for dirpath, dirnames, filenames in os.walk(os.getcwd()):
-        if "api_key.txt" in filenames:
-            found = 1
-            dir_per = dirpath
-            break
-    if found == 1:
-        with open(os.path.join(dir_per, "api_key.txt")) as f:
-            api_k = f.readlines()
-        return api_k[0].replace("\n","")
-    else:
-        st.error("No api_key.txt found")
-        st.stop()
-        return None
-api_key_from_func = get_mykey()
+
+gai_auth = util.GoogleGenAIUtilities()
+api_key_from_func = gai_auth.api_key
+
 if api_key_from_func is None:
     st.error("No api_key.txt found in the current directory.\n Please make sure that api_key.txt is present in the current directory")
     st.stop()
@@ -117,9 +105,9 @@ def see_for_improvement(suggestion, strug):
     col1,col2,col3 = st.columns([1,3,1])
     if col1.button("Yes"):
         try:
-            My_db, My_cur = su.connnecting()
-            uery = "INSERT INTO struggles (The_struggle, The_suggestion) VALUES (%s, %s)" # (strug, suggestion))
-            tup = (strug, suggestion)
+            My_db, My_cur = su.connecting_connector()
+            uery = "INSERT INTO struggles (The_struggle, The_suggestion, user_id) VALUES (%s, %s, %s)" # (strug, suggestion))
+            tup = (strug, suggestion, st.session_state.authenticated_user.user_id)
             My_cur.execute(uery, tup)
             My_db.commit()
             st.success(f"Query executed {uery}")
@@ -127,6 +115,7 @@ def see_for_improvement(suggestion, strug):
             st.error(f"Query not executed {uery}, beacuse {e}")
             print(e)
         finally:
+            My_cur.close()
             My_db.close()
             time.sleep(3)
             st.rerun()
