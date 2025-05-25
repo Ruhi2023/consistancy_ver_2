@@ -39,6 +39,7 @@ if not exist "%folder%\db_details.json" (
     echo db_details.json file has been created successfully in the assets folder.
     echo onward to run streamlit app
 )
+
 endlocal
 REM Run the Streamlit app
 D:

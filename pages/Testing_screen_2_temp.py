@@ -1,6 +1,6 @@
 
 import streamlit as st 
-import mysql.connector as conn
+
 import google.generativeai  as genai
 import Consistancy_tables_with_orm as su
 from functools import partial
@@ -59,6 +59,7 @@ def store_test_in_db(eno, mno, hno, topic_id, tp_name):
         st.warning("Please select atleast 5 questions from any difficulty level")
         return 0
     else:
+
         the_db, the_cur = su.connecting_connector()
         the_cur.execute("Insert into Tests (easy_Questions,medium_Questions,difficult_Questions,topic_id, user_id) values (%s,%s,%s,%s, %s) returning test_id",(int(eno),int(mno),int(hno),topic_id, st.session_state.authenticated_user.user_id))
         # test_id_val = the_cur.lastrowid
@@ -70,6 +71,7 @@ def store_test_in_db(eno, mno, hno, topic_id, tp_name):
         return r_di
 #     (UI ) 1. create form for fornt end 
 with st.form("test creting form"):
+
     db , cur = su.connecting_connector()
     cur.execute("Select topic_id, topic_name from Topics where topic_type = 'skills' and user_id = %s", (st.session_state.authenticated_user.user_id,))
     topics_names = cur.fetchall()
@@ -138,8 +140,10 @@ def generate_questions_and_put_in_db(Test_id, topic_id, level, model, question_n
     print(myprompt)
     # // response = model.generate(prompt=myprompt, max_tokens=200, temperature=0.9, top_p=1, top_k=64, stop="NEXT_QUESTION")
     res = model.generate_content(myprompt)
+
     my_db, my_cur = su.connecting_connector()
     my_cur.execute("INSERT INTO Questions (Test_id, Topic_id, Question_no, Question_type, Question, user_id) VALUES (%s, %s, %s, %s, %s, %s)", (Test_id, topic_id, question_no,level, res.text, st.session_state.authenticated_user.user_id))
+
     my_db.commit()
     # Done: inserted the Questions in db
     
@@ -151,6 +155,7 @@ def fetch_format_questions_from_db(ts_id, tp_id):
                         Answer: str (it's from user)}"""
     # Done: think how to handel evaluation
     my_lis = []
+
     my_db, my_cur = su.connecting_connector()
     my_cur.execute("Select question_no, question, question_type from Questions where Test_id = %s and topic_id = %s and user_id = %s", (ts_id,tp_id,st.session_state.authenticated_user.user_id))
     my_l = my_cur.fetchall()
@@ -185,7 +190,9 @@ def evaluate_and_store_answers(d_of_qs_with_ans: dict, model_instance):
     # // st.success("Your score is: " + str(score))
     # * store answer in database
     if score > 0:
+
         my_db_of_qs , my_cur_of_qs = su.connecting_connector()
+
         if score == 1:
             answer_correct_bool = True
         if score == 2:
@@ -297,8 +304,10 @@ Please format the response in markdown, with each (i repeat each) question start
     Query_not_attempted_Questions = """Select question, user_answer from Questions where Test_id = %s and topic_id = %s and correctness is null and user_id = %s"""
     # connecting to database
     
+
     my_db, my_cur = su.connecting_connector()
     my_cur.execute(Query_wrong_Questions, (test_id, topic_id, st.session_state.authenticated_user.user_id))
+
     wrong_questions = my_cur.fetchall()
     my_cur.execute(Query_correct_Questions, (test_id, topic_id, st.session_state.authenticated_user.user_id))
     correct_questions = my_cur.fetchall()
@@ -455,15 +464,17 @@ def display_evaluations_display_only(markdown_string,md_name):
 def display_evaluations(markdown_string,md_name, ts_det):
     test_id = ts_det["test_id"]
     topic_id = ts_det["topic_id"]
-    # ! res_db = conn.connection(
+    # ! res_db = su.connnectingion(
     #     host = "localhost",
     #     user = "Ruhi",
     #     passwd = "Ruhi@5084",
     #     database = "consistancy"
     # )
     # done above was the actual error()
+
     res_db,cur = su.connecting_connector()
     cur.execute("update tests set score = %s, suggestions = %s where test_id = %s and topic_id = %s and user_id = %s", (math.ceil(ts_det["score"]),markdown_string, test_id, topic_id, st.session_state.authenticated_user.user_id))
+
     res_db.commit()
     cur.close()
     res_db.close()

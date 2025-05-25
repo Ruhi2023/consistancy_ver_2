@@ -1,8 +1,8 @@
 import streamlit as st 
-import mysql.connector as conn
 import pandas as pd 
 import datetime as dt
 import matplotlib.pyplot as plt
+
 import Consistancy_tables_with_orm as su
 # my_host, my_user, my_passwd, dbname = su.getconnnames()
 
@@ -14,22 +14,27 @@ cur.execute("""SELECT column_name
     WHERE table_name = 'tests'
       AND table_schema = 'public'
     ORDER BY ordinal_position""")
+
 tests_col = cur.fetchall()
 cur.execute("select * from topics where user_id = %s", (st.session_state.authenticated_user.user_id,))
 topics_dat = cur.fetchall()
 cur.execute("""SELECT column_name
+
     FROM information_schema.columns
     WHERE table_name = 'topics'
       AND table_schema = 'public'
     ORDER BY ordinal_position""")
+
 topics_col = cur.fetchall()
 cur.execute("select * from questions where user_id = %s", (st.session_state.authenticated_user.user_id,))
 qs_dat = cur.fetchall()
 cur.execute("""SELECT column_name
+
     FROM information_schema.columns
     WHERE table_name = 'questions'
       AND table_schema = 'public'
     ORDER BY ordinal_position""")
+
 qs_col = cur.fetchall()
 cur.close()
 db.close()
@@ -37,6 +42,7 @@ db.close()
 def create_df(dat, col):
     df = pd.DataFrame(dat, columns=[i[0] for i in col])
     return df.copy()
+
 
 tests_df = create_df(tests_dat, tests_col)
 topics_df = create_df(topics_dat, topics_col)
