@@ -1,5 +1,5 @@
 from mysql import connector
-import streamlit as st
+# import streamlit as st
 import os
 import json
 # i am checking if database exists

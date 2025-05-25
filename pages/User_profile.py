@@ -49,6 +49,7 @@ sco_date_wise= sorted_test_df.groupby(["test_date"],as_index=False)["score"].sum
 start_date = sorted_test_df["test_date"].min()
 end_date = sorted_test_df["test_date"].max()
 inconsistant_days = (end_date - start_date).days - sco_date_wise[sco_date_wise["score"]!=0].count().shape[0]
+st.title(f"{st.session_state.authenticated_user.name}'s Profile")
 st.markdown(f"### Total days = {end_date - start_date}")
 st.markdown(f"### Incostant count = {inconsistant_days} days")
 # check if the user was consistant for last 5 days in row 

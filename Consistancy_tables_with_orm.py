@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Enum, CheckConstraint, UniqueConstraint
 from sqlalchemy import JSON
+from sqlalchemy import Uuid
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -8,6 +9,7 @@ from sqlalchemy import text
 import os
 import json
 import datetime
+import uuid
 
 # Create a base class for our models
 Base = declarative_base()
@@ -203,7 +205,7 @@ class Friend(Base):
 class Memory(Base):
     __tablename__ = 'memories'
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     friend_id = Column(Integer, ForeignKey('friends.friend_id'))
     user_id = Column(Integer, ForeignKey('users.user_id'))
     memory_type = Column(String(255))
@@ -212,7 +214,7 @@ class Memory(Base):
     memory_updated_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'))
     memory_accessed_at = Column(TIMESTAMP(timezone=True), server_default=text('now()'))
     memory_title = Column(String(255))
-    id_reference_milvus = Column(Integer)
+    
     
     # Add check constraint for memory_type
     __table_args__ = (
@@ -222,6 +224,7 @@ class Memory(Base):
     # Relationships
     user = relationship("User", back_populates="memories")
     friend = relationship("Friend", back_populates="memories")
+
 class ChatHistory(Base):
     __tablename__ = 'chat_history'
     

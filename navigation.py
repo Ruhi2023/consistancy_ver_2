@@ -1,4 +1,22 @@
 import streamlit as st
+
+import base64
+
+def set_background(image_file):
+    with open(image_file, "rb") as image:
+        encoded = base64.b64encode(image.read()).decode()
+    css = f"""
+    <style>
+    .stApp {{
+        background-image: url("data:image/png;base64,{encoded}");
+        background-size: cover;
+        background-attachment: fixed;
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+
 def nav_generator():
     if "authenticated_user" in st.session_state:
         nav = st.navigation({
@@ -11,5 +29,8 @@ def nav_generator():
     "login": [st.Page("pages/login.py", title="Login", icon="🔑"),st.Page("pages/register.py",title="Register", icon="#️⃣")],})
     return nav
 
+image_path = "D:\my work\project\consistancy_migrating_from_prototype\consistancy_ver_2\Assets\imgs\consistency2.png"
+img_path2 = "D:\my work\project\consistancy_migrating_from_prototype\consistancy_ver_2\Assets\imgs\consistancy2.png"
+set_background(img_path2)
 nav = nav_generator()
 nav.run()
