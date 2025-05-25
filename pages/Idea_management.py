@@ -4,7 +4,7 @@ import Consistancy_tables_with_orm as su
 import time
 
 
-my_host, my_user, my_passwd, dbname = su.getconnnames()
+# my_host, my_user, my_passwd, dbname = su.getconnnames()
 
 def fetch_status_counts():
     the_db, cursor = su.connecting_connector()
@@ -12,7 +12,8 @@ def fetch_status_counts():
     query = """
     SELECT Status, COUNT(*) as count
     FROM ideas
-    GROUP BY Status where user_id
+    where user_id= %s
+    GROUP BY Status 
     """
     
     cursor.execute(query, (st.session_state.authenticated_user.user_id,))

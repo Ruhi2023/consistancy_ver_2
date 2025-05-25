@@ -1,6 +1,5 @@
-# from mysql import connector
-from psycopg2 import connect
-import streamlit as st
+from mysql import connector
+# import streamlit as st
 import os
 import json
 # i am checking if database exists

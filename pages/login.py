@@ -3,6 +3,8 @@ import Consistancy_tables_with_orm as su
 from utilities import Authentication
 
 def save_in_session_state(authenticated_user):
+    if "authenticated_user" in st.session_state:
+        del st.session_state["authenticated_user"]
     st.session_state["authenticated_user"] = authenticated_user
 # login utility to actually authenticate the user and get authenticated_user in streamlit session state
 def make_database_call_to_login(username, password):

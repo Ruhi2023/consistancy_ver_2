@@ -2,6 +2,7 @@ import Consistancy_tables_with_orm as db
 import hashlib
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 ses =db.create_session()
 
 
@@ -71,7 +72,12 @@ class GoogleGenAIUtilities:
     def give_the_chatmodel(self):
         """we will congigure and return this thing's chat model"""
         if self.api_key is not None:
-            return ChatGoogleGenerativeAI(model= "gemini-2.0-flash", GOOGLE_API_KEY=self.api_key)
+            return ChatGoogleGenerativeAI(model= "gemini-2.0-flash",google_api_key=self.api_key)
         else:
             raise Exception("No api_key.txt found")
-
+    
+    def give_embedding_model(self):
+        if self.api_key is not None:
+            return GoogleGenerativeAIEmbeddings(model= "models/text-embedding-001", GOOGLE_API_KEY=self.api_key)
+        else:
+            raise Exception("No api_key.txt found")

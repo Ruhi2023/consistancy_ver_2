@@ -95,8 +95,7 @@ def store_test_project_in_db(eno,mno,hno,tp_id,tp_name,wrkflow_qs, topic_desc):
 with st.form("project evaluation form generate test"):
 
     the_db ,the_cur = su.connecting_connector()
-    the_cur.execute("select topic_id, topic_name , topic_description from topics where topic_type = 'projects' or topic_type = 'ideas_implementation'and user_id = %s ",(st.session_state.authenticated_user.user_id,))
-
+    the_cur.execute("select topic_id, topic_name , topic_description from topics where (topic_type = 'projects' or topic_type = 'ideas_implementation') and user_id = %s ",(st.session_state.authenticated_user.user_id,))
     projects_names = the_cur.fetchall()
     the_cur.close()
     the_db.close()
